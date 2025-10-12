@@ -1,0 +1,359 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Paper,
+  Typography,
+  Box,
+  Grid,
+  Button,
+  Divider,
+  Card,
+  CardContent,
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import {
+  ArrowBack,
+  Description,
+  CloudUpload,
+  Delete,
+  Download,
+  CheckCircle,
+} from '@mui/icons-material';
+import apiService from '../../services/apiService';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import StatusBadge from '../../components/common/StatusBadge';
+import { useAuth } from '../../context/AuthContext';
+
+const ApplicationDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  const [application, setApplication] = useState(null);
+  const [service, setService] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  const fetchData = async () => {
+    try {
+      const appRes = await apiService.getApplication(id);
+      setApplication(appRes.data);
+      
+      const serviceRes = await apiService.getService(appRes.data.service);
+      setService(serviceRes.data);
+    } catch (err) {
+      setError('Failed to load application details');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+      
+      if (file.size > maxSize) {
+        setError('File size must be less than 5MB');
+        return;
+      }
+      
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only PDF, JPEG, and PNG files are allowed');
+        return;
+      }
+      
+      setSelectedFile(file);
+      setError('');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    
+    setUploading(true);
+    try {
+      await apiService.uploadDocument(id, selectedFile);
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      fetchData(); // Refresh data
+      setError('');
+    } catch (err) {
+      setError('Failed to upload document');
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await apiService.deleteDocument(docId);
+        fetchData();
+      } catch (err) {
+        setError('Failed to delete document');
+      }
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+  if (!application) return <Alert severity="error">Application not found</Alert>;
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Button
+        startIcon={<ArrowBack />}
+        onClick={() => navigate('/applications')}
+        sx={{ mb: 3 }}
+      >
+        Back to Applications
+      </Button>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Application Header */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+          <Box>
+            <Typography variant="h4" gutterBottom>
+              {service?.service_name}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Application #{application.application_id}
+            </Typography>
+          </Box>
+          <StatusBadge status={application.status} />
+        </Box>
+      </Paper>
+
+      <Grid container spacing={3}>
+        {/* Application Details */}
+        <Grid item xs={12} md={6}>
+          <Card elevation={2}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Application Details
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              
+              <List dense>
+                <ListItem>
+                  <ListItemText
+                    primary="Service"
+                    secondary={service?.service_name}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Status"
+                    secondary={<StatusBadge status={application.status} />}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Submitted On"
+                    secondary={new Date(application.submitted_at).toLocaleString()}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Last Updated"
+                    secondary={new Date(application.updated_at).toLocaleString()}
+                  />
+                </ListItem>
+                {application.reject_reason && (
+                  <ListItem>
+                    <ListItemText
+                      primary="Rejection Reason"
+                      secondary={application.reject_reason}
+                      secondaryTypographyProps={{ color: 'error' }}
+                    />
+                  </ListItem>
+                )}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Documents */}
+        <Grid item xs={12} md={6}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Uploaded Documents
+                </Typography>
+                {application.status !== 'Completed' && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<CloudUpload />}
+                    onClick={() => setUploadDialogOpen(true)}
+                  >
+                    Upload
+                  </Button>
+                )}
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              
+              {application.documents?.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
+                  No documents uploaded yet
+                </Typography>
+              ) : (
+                <List dense>
+                  {application.documents?.map((doc) => (
+                    <ListItem
+                      key={doc.document_id}
+                      secondaryAction={
+                        <>
+                          <IconButton
+                            edge="end"
+                            href={doc.file_url}
+                            target="_blank"
+                            sx={{ mr: 1 }}
+                          >
+                            <Download />
+                          </IconButton>
+                          {application.status === 'Pending' && (
+                            <IconButton
+                              edge="end"
+                              onClick={() => handleDeleteDocument(doc.document_id)}
+                              color="error"
+                            >
+                              <Delete />
+                            </IconButton>
+                          )}
+                        </>
+                      }
+                    >
+                      <ListItemIcon>
+                        <Description />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={`Document #${doc.document_id}`}
+                        secondary={new Date(doc.uploaded_at).toLocaleDateString()}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Final Documents */}
+          {application.final_document?.length > 0 && (
+            <Card elevation={2} sx={{ mt: 2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  <Typography variant="h6">
+                    Final Documents
+                  </Typography>
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+                
+                <List dense>
+                  {application.final_document.map((doc) => (
+                    <ListItem
+                      key={doc.final_doc_id}
+                      secondaryAction={
+                        <IconButton
+                          edge="end"
+                          href={doc.file_url}
+                          target="_blank"
+                        >
+                          <Download />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemIcon>
+                        <Description color="success" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={`Final Document #${doc.final_doc_id}`}
+                        secondary={new Date(doc.uploaded_at).toLocaleDateString()}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+      </Grid>
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Upload Document</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <input
+              accept=".pdf,.jpg,.jpeg,.png"
+              style={{ display: 'none' }}
+              id="file-upload"
+              type="file"
+              onChange={handleFileSelect}
+            />
+            <label htmlFor="file-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                fullWidth
+                startIcon={<CloudUpload />}
+              >
+                Choose File
+              </Button>
+            </label>
+            
+            {selectedFile && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </Alert>
+            )}
+            
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
+              Accepted: PDF, JPEG, PNG (Max 5MB)
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleUpload}
+            disabled={!selectedFile || uploading}
+          >
+            {uploading ? 'Uploading...' : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+};
+
+export default ApplicationDetail;

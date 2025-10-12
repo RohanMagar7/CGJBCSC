@@ -55,6 +55,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
+    @property
+    def id(self):
+        """Alias for user_id to maintain compatibility with Django and JWT"""
+        return self.user_id
+
     def __str__(self):
         return self.username
 

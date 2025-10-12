@@ -1,0 +1,80 @@
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
+
+const authService = {
+  // Login
+  login: async (username, password) => {
+    const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.TOKEN}`, {
+      username,
+      password,
+    });
+    
+    const { access, refresh } = response.data;
+    
+    // Store tokens
+    localStorage.setItem('accessToken', access);
+    localStorage.setItem('refreshToken', refresh);
+    
+    // Decode token to get user_id
+    const decoded = jwtDecode(access);
+    const userId = decoded.user_id;
+    
+    // Fetch full user details from API
+    const userResponse = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.USER_DETAIL(userId)}`, {
+      headers: { Authorization: `Bearer ${access}` }
+    });
+    
+    const user = {
+      user_id: userResponse.data.user_id,
+      username: userResponse.data.username,
+      full_name: userResponse.data.full_name,
+      email: userResponse.data.email,
+      role: userResponse.data.role,
+    };
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    return user;
+  },
+
+  // Register
+  register: async (userData) => {
+    const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.USERS}`, userData);
+    return response.data;
+  },
+
+  // Logout
+  logout: () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+  },
+
+  // Get current user
+  getCurrentUser: () => {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  // Check if user is authenticated
+  isAuthenticated: () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return false;
+    
+    try {
+      const decoded = jwtDecode(token);
+      // Check if token is expired
+      return decoded.exp > Date.now() / 1000;
+    } catch {
+      return false;
+    }
+  },
+
+  // Check if user is admin
+  isAdmin: () => {
+    const user = authService.getCurrentUser();
+    return user?.role === 'admin';
+  },
+};
+
+export default authService;

@@ -12,7 +12,25 @@ from .permissions import IsAdminUser, IsOwnerOrAdmin
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    
+    def get_permissions(self):
+        # Allow anyone to register (POST)
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        # Allow authenticated users to view their own profile
+        if self.action == 'retrieve':
+            return [permissions.IsAuthenticated()]
+        # All other actions require admin authentication
+        return [permissions.IsAuthenticated(), IsAdminUser()]
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Allow users to retrieve their own profile, admins can view any profile"""
+        instance = self.get_object()
+        # Check if user is requesting their own profile or is admin
+        if request.user.user_id == instance.user_id or request.user.role == 'admin':
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        return Response({'detail': 'You do not have permission to view this profile.'}, status=403)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()

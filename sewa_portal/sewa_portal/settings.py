@@ -139,3 +139,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Email config (console for testing)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'Digital Sewa <no-reply@example.com>'
+
+# SimpleJWT Configuration
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'USER_ID_FIELD': 'user_id',  # Use user_id instead of id
+    'USER_ID_CLAIM': 'user_id',
+}
