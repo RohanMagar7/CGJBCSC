@@ -10,6 +10,9 @@ import {
   Button,
   Paper,
   Alert,
+  Chip,
+  Divider,
+  CardActions,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -17,6 +20,11 @@ import {
   Description,
   Add,
   TrendingUp,
+  CheckCircle,
+  Schedule,
+  LocalOffer,
+  ArrowForward,
+  Stars,
 } from '@mui/icons-material';
 import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -57,166 +65,211 @@ const Dashboard = () => {
       value: applications.length,
       icon: <ListAlt sx={{ fontSize: 40 }} />,
       color: 'primary.main',
+      bgColor: 'rgba(102, 126, 234, 0.1)',
     },
     {
-      title: 'Pending',
+      title: 'Pending Review',
       value: applications.filter((app) => app.status === 'Pending').length,
-      icon: <TrendingUp sx={{ fontSize: 40 }} />,
+      icon: <Schedule sx={{ fontSize: 40 }} />,
       color: 'warning.main',
+      bgColor: 'rgba(255, 152, 0, 0.1)',
     },
     {
       title: 'Approved',
       value: applications.filter((app) => app.status === 'Approved').length,
-      icon: <Description sx={{ fontSize: 40 }} />,
+      icon: <CheckCircle sx={{ fontSize: 40 }} />,
       color: 'success.main',
+      bgColor: 'rgba(76, 175, 80, 0.1)',
     },
     {
       title: 'Completed',
       value: applications.filter((app) => app.status === 'Completed').length,
-      icon: <DashboardIcon sx={{ fontSize: 40 }} />,
+      icon: <Stars sx={{ fontSize: 40 }} />,
       color: 'info.main',
+      bgColor: 'rgba(33, 150, 243, 0.1)',
     },
   ];
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Welcome Section */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 4,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-        }}
-      >
-        <Typography variant="h4" gutterBottom>
-          Welcome, {user?.username}!
-        </Typography>
-        <Typography variant="body1">
-          Manage your service applications and track their status
-        </Typography>
-      </Paper>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card
-              elevation={2}
-              sx={{
-                height: '100%',
-                transition: 'transform 0.2s',
-                '&:hover': { transform: 'translateY(-4px)' },
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ color: stat.color }}>{stat.icon}</Box>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stat.value}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {stat.title}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Available Services */}
-      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
-        Available Services
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {services.slice(0, 6).map((service) => (
-          <Grid item xs={12} md={6} lg={4} key={service.service_id}>
-            <Card elevation={2} sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {service.service_name}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2, minHeight: 60 }}
-                >
-                  {service.description || 'No description available'}
-                </Typography>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  startIcon={<Add />}
-                  onClick={() => navigate('/applications/new', { state: { service } })}
-                >
-                  Apply Now
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Recent Applications */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5">Recent Applications</Typography>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/applications')}
+    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        {/* Hero Section */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, md: 5 },
+            mb: 4,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            borderRadius: 3,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.1)',
+            },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: -30,
+              left: -30,
+              width: 150,
+              height: 150,
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.1)',
+            },
+          }}
         >
-          View All
-        </Button>
-      </Box>
-
-      {applications.length === 0 ? (
-        <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            No applications yet. Start by applying for a service!
-          </Typography>
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Chip
+              icon={<Stars />}
+              label="Digital Sewa Portal"
+              sx={{
+                mb: 2,
+                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                fontWeight: 'bold',
+              }}
+            />
+            <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
+              Welcome back, {user?.username}! 👋
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 3, opacity: 0.9 }}>
+              Manage your service applications and track their progress
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<Add />}
+                onClick={() => navigate('/applications/new')}
+                sx={{
+                  bgcolor: 'white',
+                  color: 'primary.main',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' },
+                  fontWeight: 'bold',
+                }}
+              >
+                New Application
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                endIcon={<ArrowForward />}
+                onClick={() => navigate('/applications')}
+                sx={{
+                  borderColor: 'white',
+                  color: 'white',
+                  '&:hover': {
+                    borderColor: 'white',
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                }}
+              >
+                View All Applications
+              </Button>
+            </Box>
+          </Box>
         </Paper>
-      ) : (
-        <Grid container spacing={2}>
-          {applications.slice(0, 5).map((app) => (
-            <Grid item xs={12} key={app.application_id}>
-              <Card elevation={1}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box>
-                      <Typography variant="h6">
-                        {services.find((s) => s.service_id === app.service)?.service_name || 'Service'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Submitted: {new Date(app.submitted_at).toLocaleDateString()}
-                      </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        
+
+        {/* Available Services Section */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box>
+              <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+                Available Services
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Choose from our wide range of digital services
+              </Typography>
+            </Box>
+            <Chip
+              icon={<LocalOffer />}
+              label={`${services.length} Services`}
+              color="primary"
+              variant="outlined"
+            />
+          </Box>
+          <Grid container spacing={3} sx={{ mb: 5 }}>
+            {services.slice(0, 6).map((service) => (
+              <Grid item xs={12} md={6} lg={4} key={service.service_id}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 16px rgba(102, 126, 234, 0.2)',
+                      borderColor: 'primary.main',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Box
+                      sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        mb: 2,
+                      }}
+                    >
+                      <Description sx={{ fontSize: 28 }} />
                     </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <StatusBadge status={app.status} />
-                      <Button
-                        size="small"
-                        sx={{ mt: 1 }}
-                        onClick={() => navigate(`/applications/${app.application_id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-    </Container>
+                    <Typography variant="h6" gutterBottom fontWeight="bold">
+                      {service.service_name}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 2, minHeight: 40 }}
+                    >
+                      {service.description || 'No description available'}
+                    </Typography>
+                  </CardContent>
+                  <Divider />
+                  <CardActions sx={{ p: 2 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      startIcon={<Add />}
+                      onClick={() => navigate('/applications/new', { state: { service } })}
+                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      Apply Now
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 

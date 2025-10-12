@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -15,6 +15,17 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminApplicationReview from './pages/admin/AdminApplicationReview';
 import AdminServices from './pages/admin/AdminServices';
 import AdminUsers from './pages/admin/AdminUsers';
+
+// Component to handle home route based on user role
+const HomeRoute = () => {
+  const { isAdmin, loading } = useAuth();
+  
+  if (loading) {
+    return null;
+  }
+  
+  return isAdmin ? <Navigate to="/admin" replace /> : <Dashboard />;
+};
 
 const theme = createTheme({
   palette: {
@@ -55,7 +66,7 @@ function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
                 <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
                 <Route path="/applications/new" element={<ProtectedRoute><NewApplication /></ProtectedRoute>} />
                 <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />

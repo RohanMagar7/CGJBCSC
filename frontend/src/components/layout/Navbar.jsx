@@ -29,6 +29,8 @@ import {
   Login,
   PersonAdd,
   Home,
+  Assignment,
+  People,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 
@@ -57,11 +59,17 @@ const Navbar = () => {
 
   const menuItems = user
     ? [
-        { label: 'Dashboard', icon: <Dashboard />, path: '/' },
-        { label: 'My Applications', icon: <ListAlt />, path: '/applications' },
         ...(isAdmin
-          ? [{ label: 'Admin Panel', icon: <AdminPanelSettings />, path: '/admin' }]
-          : []),
+          ? [
+              { label: 'Admin Dashboard', icon: <AdminPanelSettings />, path: '/admin' },
+              { label: 'Manage Applications', icon: <Assignment />, path: '/admin/applications' },
+              { label: 'Manage Users', icon: <People />, path: '/admin/users' },
+              { label: 'Manage Services', icon: <ListAlt />, path: '/admin/services' },
+            ]
+          : [
+              { label: 'Dashboard', icon: <Dashboard />, path: '/' },
+              { label: 'My Applications', icon: <ListAlt />, path: '/applications' },
+            ]),
       ]
     : [];
 
