@@ -29,7 +29,13 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-development-secret')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 # Allow hosts from an env var (comma-separated) or sensible local defaults
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "cgjbcsc.onrender.com",
+    "https://cgjbcsc.netlify.app",  # ✅ add this too
+]
 
 
 # Application definition
