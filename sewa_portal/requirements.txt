@@ -1,0 +1,29 @@
+# Core Django Framework
+Django==5.2.7
+asgiref==3.10.0
+sqlparse==0.5.3
+
+# Environment Variables
+python-decouple==3.8
+
+# Django REST Framework
+djangorestframework==3.16.1
+
+# JWT Authentication
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.10.1
+
+# CORS Headers
+django-cors-headers==4.9.0
+
+# MongoDB Support
+djongo==1.2.31
+pymongo==4.15.3
+dnspython==2.8.0
+
+# Image Processing
+Pillow==11.3.0
+
+# Python 3.6+ dataclasses backport (may not be needed for Python 3.7+)
+dataclasses==0.6
+python-decouple==3.8
