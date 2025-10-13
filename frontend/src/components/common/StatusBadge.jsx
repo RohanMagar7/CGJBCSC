@@ -30,7 +30,14 @@ const StatusBadge = ({ status }) => {
       color={config.color}
       size="small"
       icon={config.icon}
-      sx={{ fontWeight: 'medium' }}
+      sx={{ 
+        fontWeight: 'medium',
+        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+        height: { xs: 24, sm: 28 },
+        '& .MuiChip-icon': {
+          fontSize: { xs: 16, sm: 18 },
+        },
+      }}
     />
   );
 };

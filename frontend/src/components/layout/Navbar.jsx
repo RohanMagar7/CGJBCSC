@@ -31,6 +31,9 @@ import {
   Home,
   Assignment,
   People,
+  Payment,
+  CardTravel,
+  Description,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 
@@ -65,9 +68,12 @@ const Navbar = () => {
               { label: 'Manage Applications', icon: <Assignment />, path: '/admin/applications' },
               { label: 'Manage Users', icon: <People />, path: '/admin/users' },
               { label: 'Manage Services', icon: <ListAlt />, path: '/admin/services' },
+              { label: 'Payments', icon: <Payment />, path: '/admin/payments' },
+              { label: 'Announcements', icon: <Dashboard />, path: '/admin/announcements' },
             ]
           : [
-              { label: 'Dashboard', icon: <Dashboard />, path: '/' },
+              { label: 'Home', icon: <Home />, path: '/home' },
+              { label: 'Services', icon: <CardTravel />, path: '/services' },
               { label: 'My Applications', icon: <ListAlt />, path: '/applications' },
             ]),
       ]
@@ -75,7 +81,18 @@ const Navbar = () => {
 
   const renderDrawer = () => (
     <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-      <Box sx={{ width: 250 }} role="presentation">
+      <Box sx={{ width: { xs: 240, sm: 280 } }} role="presentation">
+        {/* Drawer Header */}
+        <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+          <Typography variant="h6" fontWeight="bold">
+            Sewa Portal
+          </Typography>
+          {user && (
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+              {user.username} ({user.role})
+            </Typography>
+          )}
+        </Box>
         <List>
           {menuItems.map((item) => (
             <ListItem
@@ -84,9 +101,20 @@ const Navbar = () => {
               component={RouterLink}
               to={item.path}
               onClick={() => setDrawerOpen(false)}
+              sx={{
+                '&:hover': {
+                  bgcolor: 'primary.light',
+                  color: 'primary.contrastText',
+                },
+              }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
+              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+              <ListItemText 
+                primary={item.label} 
+                primaryTypographyProps={{ 
+                  fontSize: { xs: '0.9rem', sm: '1rem' } 
+                }}
+              />
             </ListItem>
           ))}
         </List>
@@ -112,17 +140,18 @@ const Navbar = () => {
             )}
 
             {/* Logo */}
-            <Home sx={{ mr: 1 }} />
+            <Home sx={{ mr: 1, fontSize: { xs: 24, sm: 28 } }} />
             <Typography
               variant="h6"
               component={RouterLink}
-              to="/"
+              to="/home"
               sx={{
                 flexGrow: isMobile ? 1 : 0,
                 textDecoration: 'none',
                 color: 'inherit',
                 fontWeight: 'bold',
-                mr: 4,
+                mr: { xs: 2, md: 4 },
+                fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
               }}
             >
               Sewa Portal
@@ -130,7 +159,7 @@ const Navbar = () => {
 
             {/* Desktop Menu */}
             {!isMobile && user && (
-              <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
+              <Box sx={{ flexGrow: 1, display: 'flex', gap: { xs: 0.5, md: 1 }, flexWrap: 'wrap' }}>
                 {menuItems.map((item) => (
                   <Button
                     key={item.path}
@@ -138,6 +167,10 @@ const Navbar = () => {
                     to={item.path}
                     color="inherit"
                     startIcon={item.icon}
+                    sx={{
+                      fontSize: { xs: '0.8rem', md: '0.875rem' },
+                      px: { xs: 1, md: 2 },
+                    }}
                   >
                     {item.label}
                   </Button>
@@ -149,12 +182,12 @@ const Navbar = () => {
 
             {/* User Menu */}
             {user ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+                <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontSize: { sm: '0.85rem', md: '0.875rem' } }}>
                   {user.username}
                 </Typography>
-                <IconButton onClick={handleMenu} color="inherit">
-                  <Avatar sx={{ width: 32, height: 32 }}>
+                <IconButton onClick={handleMenu} color="inherit" size="small">
+                  <Avatar sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 } }}>
                     <AccountCircle />
                   </Avatar>
                 </IconButton>
@@ -164,25 +197,35 @@ const Navbar = () => {
                   onClose={handleClose}
                   anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                   transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  PaperProps={{
+                    sx: {
+                      mt: 1,
+                      minWidth: 180,
+                    },
+                  }}
                 >
                   <MenuItem disabled>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
                       {user.username} ({user.role})
                     </Typography>
                   </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <Logout sx={{ mr: 1 }} fontSize="small" />
-                    Logout
+                    <Typography sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>Logout</Typography>
                   </MenuItem>
                 </Menu>
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
                 <Button
                   component={RouterLink}
                   to="/login"
                   color="inherit"
                   startIcon={<Login />}
+                  sx={{
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    px: { xs: 1.5, sm: 2 },
+                  }}
                 >
                   Login
                 </Button>
@@ -192,7 +235,11 @@ const Navbar = () => {
                   color="inherit"
                   variant="outlined"
                   startIcon={<PersonAdd />}
-                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  sx={{ 
+                    display: { xs: 'none', sm: 'inline-flex' },
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    px: { xs: 1.5, sm: 2 },
+                  }}
                 >
                   Register
                 </Button>

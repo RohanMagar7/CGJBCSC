@@ -138,9 +138,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Email config (console for testing)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'Digital Sewa <no-reply@example.com>'
+
+# Email Configuration - Gmail
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'magarohan8@gmail.com'          # ← Your Gmail
+EMAIL_HOST_PASSWORD = 'jffj melw sqmq ztho '       # ← App Password (not regular password!)
+DEFAULT_FROM_EMAIL = 'Sewa Portal <magarohan8@gmail.com>'
 
 # SimpleJWT Configuration
 from datetime import timedelta

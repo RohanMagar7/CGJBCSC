@@ -73,41 +73,41 @@ const Register = () => {
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 } }}>
       <Box
         sx={{
-          minHeight: '80vh',
+          minHeight: { xs: 'calc(100vh - 120px)', sm: '80vh' },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          py: 4,
+          py: { xs: 3, sm: 4 },
         }}
       >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-            <PersonAdd sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4" component="h1" gutterBottom>
+        <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: '100%', maxWidth: 700 }}>
+          <Box sx={{ mb: { xs: 2, sm: 3 }, textAlign: 'center' }}>
+            <PersonAdd sx={{ fontSize: { xs: 40, sm: 48 }, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
               Create Account
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Fill in your details to get started
             </Typography>
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert severity="success" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Registration successful! Redirecting to login...
             </Alert>
           )}
 
           <form onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -118,6 +118,18 @@ const Register = () => {
                   required
                   autoFocus
                   helperText="Choose a unique username"
+                  size="medium"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiFormHelperText-root': {
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    },
+                  }}
                 />
               </Grid>
 
@@ -129,6 +141,15 @@ const Register = () => {
                   value={formData.full_name}
                   onChange={handleChange}
                   required
+                  size="medium"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                  }}
                 />
               </Grid>
 
@@ -141,6 +162,18 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleChange}
                   helperText="Optional"
+                  size="medium"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiFormHelperText-root': {
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    },
+                  }}
                 />
               </Grid>
 
@@ -153,6 +186,18 @@ const Register = () => {
                   onChange={handleChange}
                   required
                   helperText="10 digits"
+                  size="medium"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiFormHelperText-root': {
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    },
+                  }}
                 />
               </Grid>
 
@@ -166,12 +211,25 @@ const Register = () => {
                   onChange={handleChange}
                   required
                   helperText="Minimum 6 characters"
+                  size="medium"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiFormHelperText-root': {
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    },
+                  }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
                           onClick={() => setShowPassword(!showPassword)}
                           edge="end"
+                          size={window.innerWidth < 600 ? 'small' : 'medium'}
                         >
                           {showPassword ? <VisibilityOff /> : <Visibility />}
                         </IconButton>
@@ -188,13 +246,18 @@ const Register = () => {
               variant="contained"
               size="large"
               disabled={loading || success}
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              sx={{ 
+                mt: { xs: 2, sm: 3 }, 
+                mb: 2, 
+                py: { xs: 1.2, sm: 1.5 },
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+              }}
             >
               {loading ? 'Creating Account...' : 'Register'}
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                 Already have an account?{' '}
                 <Link component={RouterLink} to="/login" underline="hover">
                   Login here

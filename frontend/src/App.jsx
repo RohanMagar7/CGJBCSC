@@ -7,24 +7,33 @@ import Footer from './components/layout/Footer';
 
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Dashboard from './pages/user/Dashboard';
+import Home from './pages/user/Home';
 import Applications from './pages/user/Applications';
 import ApplicationDetail from './pages/user/ApplicationDetail';
-import NewApplication from './pages/user/NewApplication';
+import Services from './pages/user/Services';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminApplications from './pages/admin/AdminApplications';
 import AdminApplicationReview from './pages/admin/AdminApplicationReview';
 import AdminServices from './pages/admin/AdminServices';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminAnnouncements from './pages/admin/AdminAnnouncements';
+import AdminPayments from './pages/admin/AdminPayments';
 
-// Component to handle home route based on user role
-const HomeRoute = () => {
-  const { isAdmin, loading } = useAuth();
+// Component to handle root route based on user authentication
+const RootRoute = () => {
+  const { user, isAdmin, loading } = useAuth();
   
   if (loading) {
     return null;
   }
   
-  return isAdmin ? <Navigate to="/admin" replace /> : <Dashboard />;
+  // If user is logged in, redirect to their appropriate page
+  if (user) {
+    return isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/home" replace />;
+  }
+  
+  // If not logged in, redirect to home page
+  return <Navigate to="/home" replace />;
 };
 
 const theme = createTheme({
@@ -35,20 +44,56 @@ const theme = createTheme({
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
   },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { textTransform: 'none', borderRadius: 8 },
+        root: { 
+          textTransform: 'none', 
+          borderRadius: 8,
+          '@media (max-width:600px)': {
+            fontSize: '0.875rem',
+            padding: '6px 12px',
+          },
+        },
       },
     },
     MuiCard: {
       styleOverrides: {
-        root: { borderRadius: 12 },
+        root: { 
+          borderRadius: 12,
+          '@media (max-width:600px)': {
+            borderRadius: 8,
+          },
+        },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: { borderRadius: 12 },
+        root: { 
+          borderRadius: 12,
+          '@media (max-width:600px)': {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          '@media (max-width:600px)': {
+            paddingLeft: 16,
+            paddingRight: 16,
+          },
+        },
       },
     },
   },
@@ -60,21 +105,35 @@ function App() {
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100vh',
+            width: '100%',
+            overflowX: 'hidden',
+          }}>
             <Navbar />
-            <Box component="main" sx={{ flexGrow: 1 }}>
+            <Box component="main" sx={{ 
+              flexGrow: 1,
+              width: '100%',
+              overflowX: 'hidden',
+            }}>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
+                <Route path="/" element={<RootRoute />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
+                <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
                 <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-                <Route path="/applications/new" element={<ProtectedRoute><NewApplication /></ProtectedRoute>} />
                 <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminApplications /></ProtectedRoute>} />
                 <Route path="/admin/applications/:id" element={<ProtectedRoute adminOnly><AdminApplicationReview /></ProtectedRoute>} />
                 <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
                 <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin/announcements" element={<ProtectedRoute adminOnly><AdminAnnouncements /></ProtectedRoute>} />
+                <Route path="/admin/payments" element={<ProtectedRoute adminOnly><AdminPayments /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Box>

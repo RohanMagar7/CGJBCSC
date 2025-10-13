@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -28,6 +29,7 @@ import {
   Delete,
   Download,
   CheckCircle,
+  Payment,
 } from '@mui/icons-material';
 import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -40,6 +42,8 @@ const ApplicationDetail = () => {
   const { isAdmin } = useAuth();
   const [application, setApplication] = useState(null);
   const [service, setService] = useState(null);
+  const [payment, setPayment] = useState(null);
+  const [paymentSettings, setPaymentSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -57,6 +61,24 @@ const ApplicationDetail = () => {
       
       const serviceRes = await apiService.getService(appRes.data.service);
       setService(serviceRes.data);
+
+      // Fetch payment information if application is approved
+      if (appRes.data.status === 'Approved') {
+        try {
+          const paymentsRes = await apiService.getPayments();
+          const userPayment = paymentsRes.data.find(p => p.application === appRes.data.application_id);
+          if (userPayment) {
+            setPayment(userPayment);
+            
+            // Fetch active payment settings to get UPI ID and QR code
+            const settingsRes = await apiService.getActivePaymentSettings();
+            console.log('Payment Settings Response:', settingsRes.data);
+            setPaymentSettings(settingsRes.data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch payment info:', err);
+        }
+      }
     } catch (err) {
       setError('Failed to load application details');
       console.error(err);
@@ -197,6 +219,176 @@ const ApplicationDetail = () => {
               </List>
             </CardContent>
           </Card>
+
+          {/* Payment Details - Show when Approved */}
+          {application.status === 'Approved' && payment && (
+            <Card elevation={2} sx={{ mt: 2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Payment color="primary" sx={{ mr: 1 }} />
+                  <Typography variant="h6">
+                    Payment Information
+                  </Typography>
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Your application has been approved! Please proceed with payment.
+                </Alert>
+
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Amount to Pay"
+                      secondary={
+                        <Typography variant="h5" color="primary" fontWeight="bold">
+                          NPR {service?.price || '0'}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Payment Method"
+                      secondary={
+                        <Chip 
+                          label={payment.payment_method} 
+                          color="primary" 
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      }
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Payment Status"
+                      secondary={
+                        <Chip 
+                          label={payment.payment_status}
+                          color={payment.payment_status === 'Completed' ? 'success' : 'warning'}
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      }
+                    />
+                  </ListItem>
+                </List>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Debug: Show if payment settings are loaded */}
+                {!paymentSettings && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    Payment settings are being loaded...
+                  </Alert>
+                )}
+
+                {paymentSettings && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Typography variant="body2" fontWeight="bold" gutterBottom>
+                      Available Payment Methods:
+                    </Typography>
+                    {paymentSettings.upi_id && (
+                      <Typography variant="body2">✓ UPI Payment Available</Typography>
+                    )}
+                    {paymentSettings.qr_code_url && (
+                      <Typography variant="body2">✓ QR Code Payment Available</Typography>
+                    )}
+                  </Alert>
+                )}
+
+                {/* Show UPI ID if available */}
+                {paymentSettings?.upi_id && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      UPI ID
+                    </Typography>
+                    <Paper 
+                      elevation={0} 
+                      sx={{ 
+                        p: 2, 
+                        bgcolor: 'grey.100',
+                        textAlign: 'center',
+                        fontFamily: 'monospace',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold',
+                        color: 'primary.main'
+                      }}
+                    >
+                      {paymentSettings.upi_id}
+                    </Paper>
+                  </Box>
+                )}
+
+                {/* Show UPI Number if available */}
+                {paymentSettings?.upi_number && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      UPI Number
+                    </Typography>
+                    <Paper 
+                      elevation={0} 
+                      sx={{ 
+                        p: 2, 
+                        bgcolor: 'grey.100',
+                        textAlign: 'center',
+                        fontFamily: 'monospace',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold',
+                        color: 'primary.main'
+                      }}
+                    >
+                      {paymentSettings.upi_number}
+                    </Paper>
+                  </Box>
+                )}
+
+                {/* Show QR Code if available */}
+                {paymentSettings?.qr_code_url && (
+                  <Box sx={{ mb: 2, textAlign: 'center' }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Scan QR Code to Pay
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={paymentSettings.qr_code_url}
+                      alt="Payment QR Code"
+                      sx={{
+                        maxWidth: '300px',
+                        width: '100%',
+                        height: 'auto',
+                        mt: 2,
+                        border: '3px solid',
+                        borderColor: 'primary.main',
+                        borderRadius: 2,
+                        p: 2,
+                        bgcolor: 'white',
+                        boxShadow: 2
+                      }}
+                    />
+                  </Box>
+                )}
+
+                <Alert severity="info">
+                  <Typography variant="body2" fontWeight="bold" gutterBottom>
+                    Payment Instructions:
+                  </Typography>
+                  <Typography variant="body2">
+                    {payment.payment_method === 'Cash' && 
+                      'Please visit our office during business hours (10 AM - 5 PM) to complete your payment at the counter.'
+                    }
+                    {payment.payment_method === 'UPI' && 
+                      'Complete your payment using any UPI app. After payment, the admin will verify your transaction.'
+                    }
+                    {payment.payment_method === 'QR' && 
+                      'Scan the QR code using any UPI app to complete your payment. The admin will verify your transaction.'
+                    }
+                  </Typography>
+                </Alert>
+              </CardContent>
+            </Card>
+          )}
         </Grid>
 
         {/* Documents */}

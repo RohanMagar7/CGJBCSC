@@ -6,8 +6,8 @@ const Footer = () => {
     <Box
       component="footer"
       sx={{
-        py: 3,
-        px: 2,
+        py: { xs: 2, sm: 3 },
+        px: { xs: 1, sm: 2 },
         mt: 'auto',
         backgroundColor: (theme) =>
           theme.palette.mode === 'light'
@@ -16,34 +16,48 @@ const Footer = () => {
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: { xs: 'center', sm: 'space-between' }, 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: { xs: 1.5, sm: 2 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          textAlign: { xs: 'center', sm: 'left' },
+        }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             © {new Date().getFullYear()} Sewa Portal. All rights reserved.
           </Typography>
           
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link
               href="https://github.com"
               color="inherit"
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
             >
-              <GitHub fontSize="small" />
-              <Typography variant="body2">GitHub</Typography>
+              <GitHub fontSize="small" sx={{ fontSize: { xs: 16, sm: 20 } }} />
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>GitHub</Typography>
             </Link>
             <Link
               href="mailto:support@sewaportal.com"
               color="inherit"
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
             >
-              <Email fontSize="small" />
-              <Typography variant="body2">Contact</Typography>
+              <Email fontSize="small" sx={{ fontSize: { xs: 16, sm: 20 } }} />
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Contact</Typography>
             </Link>
           </Box>
         </Box>
         
-        <Divider sx={{ my: 2 }} />
+        <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
         
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
+        <Typography 
+          variant="caption" 
+          color="text.secondary" 
+          align="center" 
+          display="block"
+          sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+        >
           Digital Service Application Management System
         </Typography>
       </Container>

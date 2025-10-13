@@ -40,7 +40,7 @@ const Login = () => {
       if (user.role === 'Admin') {
         navigate('/admin');
       } else {
-        navigate('/');
+        navigate('/home');
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
@@ -50,28 +50,29 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="sm" sx={{ px: { xs: 2, sm: 3 } }}>
       <Box
         sx={{
-          minHeight: '80vh',
+          minHeight: { xs: 'calc(100vh - 120px)', sm: '80vh' },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          py: { xs: 3, sm: 4 },
         }}
       >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-            <LoginIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4" component="h1" gutterBottom>
+        <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: '100%', maxWidth: 500 }}>
+          <Box sx={{ mb: { xs: 2, sm: 3 }, textAlign: 'center' }}>
+            <LoginIcon sx={{ fontSize: { xs: 40, sm: 48 }, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
               Welcome Back
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Sign in to access your account
             </Typography>
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {error}
             </Alert>
           )}
@@ -87,6 +88,15 @@ const Login = () => {
               required
               autoFocus
               autoComplete="username"
+              size="medium"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+              }}
             />
 
             <TextField
@@ -99,12 +109,22 @@ const Login = () => {
               margin="normal"
               required
               autoComplete="current-password"
+              size="medium"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
+                      size={window.innerWidth < 600 ? 'small' : 'medium'}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -119,13 +139,18 @@ const Login = () => {
               variant="contained"
               size="large"
               disabled={loading}
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              sx={{ 
+                mt: { xs: 2, sm: 3 }, 
+                mb: 2, 
+                py: { xs: 1.2, sm: 1.5 },
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+              }}
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                 Don't have an account?{' '}
                 <Link component={RouterLink} to="/register" underline="hover">
                   Register here
