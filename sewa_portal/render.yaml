@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sewa-portal-backend
+    env: python
+    plan: free
+    region: oregon
+  buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+  startCommand: "gunicorn sewa_portal.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        value: "replace-with-secret"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromService: null
