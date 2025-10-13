@@ -41,8 +41,8 @@ import {
   Support as SupportIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import apiService from '../services/apiService';
-import { useAuth } from '../../context/AuthContext';
+import apiService from '../../frontend/src/pages/services/apiService';
+import { useAuth } from '../../frontend/src/context/AuthContext';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -529,10 +529,10 @@ export default function Home() {
               )}
             </Box>
           </Grid>
-
+          
           {/* Right Side - Feature Cards */}
           <Grid item xs={12} md={6}>
-            <Box sx={{ position: 'relative', mt: { xs: 0, md: 0 }, px: { xs: 0, md: 1 }, py: { xs: 0, md: 1 } }}>
+            <Box sx={{ position: 'relative' }}>
               {/* Decorative background circle */}
               <Box
                 sx={{
@@ -584,7 +584,6 @@ export default function Home() {
                       elevation={0}
                       sx={{
                         height: '100%',
-                        minHeight: 180,
                         borderRadius: 4,
                         border: '1px solid',
                         borderColor: 'grey.100',
@@ -593,7 +592,7 @@ export default function Home() {
                         position: 'relative',
                         overflow: 'hidden',
                         '&:hover': {
-                          transform: 'translateY(-8px)',
+                          transform: 'translateY(-12px) scale(1.02)',
                           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
                           borderColor: 'transparent',
                           '& .icon-box': {
@@ -619,7 +618,7 @@ export default function Home() {
                     >
                       <CardContent
                         sx={{
-                          p: { xs: 2, md: 3 },
+                          p: 3,
                           position: 'relative',
                           zIndex: 1,
                           height: '100%',
@@ -630,15 +629,15 @@ export default function Home() {
                         <Box
                           className="icon-box"
                           sx={{
-                            width: { xs: 50, md: 60 },
-                            height: { xs: 50, md: 60 },
+                            width: { xs: 60, md: 70 },
+                            height: { xs: 60, md: 70 },
                             borderRadius: 3,
                             background: feature.gradient,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: 'white',
-                            mb: 1.5,
+                            mb: 2,
                             transition: 'all 0.3s ease',
                             boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
                           }}
@@ -650,7 +649,6 @@ export default function Home() {
                           fontWeight="bold"
                           gutterBottom
                           sx={{
-                            fontSize: { xs: '0.95rem', md: '1.1rem' },
                             transition: 'color 0.3s ease',
                             '.MuiCard-root:hover &': {
                               color: 'white',
@@ -663,8 +661,7 @@ export default function Home() {
                           variant="body2"
                           color="text.secondary"
                           sx={{
-                            fontSize: { xs: '0.8rem', md: '0.875rem' },
-                            lineHeight: 1.5,
+                            lineHeight: 1.7,
                             transition: 'color 0.3s ease',
                             '.MuiCard-root:hover &': {
                               color: 'rgba(255,255,255,0.9)',

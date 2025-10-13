@@ -1,23 +1,30 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { lazy, Suspense } from 'react';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 
+// Loading component
+import LoadingSpinner from './components/common/LoadingSpinner';
+
+// Eager load authentication pages (frequently accessed)
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Home from './pages/user/Home';
-import Applications from './pages/user/Applications';
-import ApplicationDetail from './pages/user/ApplicationDetail';
-import Services from './pages/user/Services';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminApplications from './pages/admin/AdminApplications';
-import AdminApplicationReview from './pages/admin/AdminApplicationReview';
-import AdminServices from './pages/admin/AdminServices';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminAnnouncements from './pages/admin/AdminAnnouncements';
-import AdminPayments from './pages/admin/AdminPayments';
+import Home from '../../docs/archive/Home';
+
+// Lazy load other pages for better initial load time
+const Applications = lazy(() => import('./pages/user/Applications'));
+const ApplicationDetail = lazy(() => import('./pages/user/ApplicationDetail'));
+const Services = lazy(() => import('./pages/user/Services'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminApplications = lazy(() => import('./pages/admin/AdminApplications'));
+const AdminApplicationReview = lazy(() => import('./pages/admin/AdminApplicationReview'));
+const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
+const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 
 // Component to handle root route based on user authentication
 const RootRoute = () => {
@@ -118,24 +125,26 @@ function App() {
               width: '100%',
               overflowX: 'hidden',
             }}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/" element={<RootRoute />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
-                <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-                <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-                <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminApplications /></ProtectedRoute>} />
-                <Route path="/admin/applications/:id" element={<ProtectedRoute adminOnly><AdminApplicationReview /></ProtectedRoute>} />
-                <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
-                <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
-                <Route path="/admin/announcements" element={<ProtectedRoute adminOnly><AdminAnnouncements /></ProtectedRoute>} />
-                <Route path="/admin/payments" element={<ProtectedRoute adminOnly><AdminPayments /></ProtectedRoute>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/" element={<RootRoute />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
+                  <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+                  <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+                  <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminApplications /></ProtectedRoute>} />
+                  <Route path="/admin/applications/:id" element={<ProtectedRoute adminOnly><AdminApplicationReview /></ProtectedRoute>} />
+                  <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
+                  <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+                  <Route path="/admin/announcements" element={<ProtectedRoute adminOnly><AdminAnnouncements /></ProtectedRoute>} />
+                  <Route path="/admin/payments" element={<ProtectedRoute adminOnly><AdminPayments /></ProtectedRoute>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
             </Box>
             <Footer />
           </Box>

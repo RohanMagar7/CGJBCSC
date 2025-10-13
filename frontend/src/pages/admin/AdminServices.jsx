@@ -36,7 +36,7 @@ import {
   CheckCircle,
   Cancel,
 } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminServices() {
@@ -280,23 +280,29 @@ export default function AdminServices() {
         <Paper
           elevation={0}
           sx={{
-            p: 4,
+            p: { xs: 2, sm: 3, md: 4 },
             mb: 4,
             background: 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)',
             color: 'white',
             borderRadius: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', md: 'center' },
+            gap: 2
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                <Settings sx={{ fontSize: 32 }} />
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 } }}>
+                <Settings sx={{ fontSize: { xs: 28, md: 32 } }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
                   Manage Services
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1" sx={{ opacity: 0.9, fontSize: { xs: '0.875rem', md: '1rem' } }}>
                   Create, edit, and manage all available services
                 </Typography>
               </Box>
@@ -306,12 +312,17 @@ export default function AdminServices() {
               size="large"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              fullWidth={false}
               sx={{
                 bgcolor: 'white',
                 color: 'success.main',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 fontWeight: 'bold',
-                px: 3,
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.5 },
+                fontSize: { xs: '0.875rem', md: '1rem' },
+                width: { xs: '100%', sm: 'auto' },
+                minWidth: { sm: 200 },
               }}
             >
               Add New Service
@@ -384,108 +395,171 @@ export default function AdminServices() {
                   <Card
                     elevation={0}
                     sx={{
-                      height: '100%',
-                      borderRadius: 3,
+                      height: 360,
+                      width: '100%',
+                      maxWidth: 380,
+                      margin: '0 auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'divider',
                       transition: 'all 0.3s ease',
+                      overflow: 'hidden',
                       '&:hover': {
                         transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 16px rgba(76, 175, 80, 0.2)',
+                        boxShadow: '0 8px 16px rgba(76, 175, 80, 0.15)',
                         borderColor: 'success.main',
                       },
                     }}
                   >
-                    <CardContent sx={{ p: 3 }}>
-                      {/* Service Icon & Title */}
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+                    <CardContent sx={{ p: 2, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      {/* Service Icon & Title - Compact */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, minHeight: 56 }}>
                         <Avatar
                           sx={{
                             bgcolor: alpha('#4caf50', 0.1),
                             color: 'success.main',
-                            width: 50,
-                            height: 50,
+                            width: 40,
+                            height: 40,
+                            flexShrink: 0,
                           }}
                         >
-                          <DescriptionIcon sx={{ fontSize: 28 }} />
+                          <DescriptionIcon sx={{ fontSize: 22 }} />
                         </Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" gutterBottom fontWeight="bold">
+                        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <Typography 
+                            variant="h6" 
+                            fontWeight="bold"
+                            title={service.service_name}
+                            sx={{
+                              fontSize: '0.95rem',
+                              lineHeight: 1.3,
+                              mb: 0.5,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              cursor: 'help',
+                              maxHeight: 33,
+                            }}
+                          >
                             {service.service_name}
                           </Typography>
                           <Chip
-                            label={`Service #${service.service_id}`}
+                            label={`#${service.service_id}`}
                             size="small"
                             variant="outlined"
-                            sx={{ fontSize: '0.7rem' }}
+                            sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 1 } }}
                           />
                         </Box>
                       </Box>
 
-                      {/* Description */}
+                      {/* Description - Fixed 2 lines with tooltip */}
                       <Typography
                         variant="body2"
                         color="text.secondary"
+                        title={service.description}
                         sx={{
-                          mb: 2,
-                          minHeight: 60,
+                          mb: 1.5,
+                          height: 40,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           display: '-webkit-box',
-                          WebkitLineClamp: 3,
+                          WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
+                          fontSize: '0.85rem',
+                          lineHeight: 1.4,
+                          cursor: 'help',
                         }}
                       >
                         {service.description}
                       </Typography>
 
-                      <Divider sx={{ my: 2 }} />
+                      <Divider sx={{ my: 1.5, flexShrink: 0 }} />
 
-                      {/* Service Details */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Box>
+                      {/* Service Details - Compact */}
+                      <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                        <Box sx={{ flex: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                            <AttachMoney sx={{ fontSize: 18, color: 'success.main' }} />
-                            <Typography variant="caption" color="text.secondary">
+                            <AttachMoney sx={{ fontSize: 16, color: 'success.main' }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                               Fee
                             </Typography>
                           </Box>
-                          <Typography variant="h6" fontWeight="bold" color="success.main">
+                          <Typography 
+                            variant="subtitle1" 
+                            fontWeight="bold" 
+                            color="success.main" 
+                            title={`₹${service.price}`}
+                            sx={{ 
+                              fontSize: '1rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             ₹{service.price}
                           </Typography>
                         </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, justifyContent: 'flex-end' }}>
-                            <Schedule sx={{ fontSize: 18, color: 'primary.main' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              Processing Time
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <Schedule sx={{ fontSize: 16, color: 'primary.main' }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                              Processing
                             </Typography>
                           </Box>
-                          <Typography variant="h6" fontWeight="bold" color="primary.main">
+                          <Typography 
+                            variant="subtitle1" 
+                            fontWeight="bold" 
+                            color="primary.main" 
+                            title={`${service.processing_days} days`}
+                            sx={{ 
+                              fontSize: '1rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             {service.processing_days} days
                           </Typography>
                         </Box>
                       </Box>
                     </CardContent>
 
-                    <Divider />
+                    <Divider sx={{ flexShrink: 0 }} />
 
-                    {/* Actions */}
-                    <CardActions sx={{ p: 2, justifyContent: 'space-between' }}>
+                    {/* Actions - Compact */}
+                    <CardActions sx={{ p: 1.5, justifyContent: 'space-between', gap: 1, flexShrink: 0 }}>
                       <Button
                         variant="outlined"
-                        startIcon={<EditIcon />}
+                        size="small"
+                        startIcon={<EditIcon sx={{ fontSize: 16 }} />}
                         onClick={() => handleOpenDialog(service)}
-                        sx={{ borderRadius: 2, flex: 1, mr: 1 }}
+                        sx={{ 
+                          borderRadius: 1.5, 
+                          flex: 1,
+                          py: 0.5,
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                        }}
                       >
                         Edit
                       </Button>
                       <Button
                         variant="outlined"
+                        size="small"
                         color="error"
-                        startIcon={<DeleteIcon />}
+                        startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
                         onClick={() => handleDeleteClick(service)}
-                        sx={{ borderRadius: 2, flex: 1 }}
+                        sx={{ 
+                          borderRadius: 1.5, 
+                          flex: 1,
+                          py: 0.5,
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                        }}
                       >
                         Delete
                       </Button>

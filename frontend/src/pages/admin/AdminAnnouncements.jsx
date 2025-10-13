@@ -34,7 +34,7 @@ import {
   Save as SaveIcon,
   Announcement as AnnouncementIcon,
 } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminAnnouncements() {
@@ -192,23 +192,29 @@ export default function AdminAnnouncements() {
         <Paper
           elevation={0}
           sx={{
-            p: 4,
+            p: { xs: 2, sm: 3, md: 4 },
             mb: 4,
             background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
             color: 'white',
             borderRadius: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', md: 'center' },
+            gap: 2
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                <CampaignIcon sx={{ fontSize: 32 }} />
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 } }}>
+                <CampaignIcon sx={{ fontSize: { xs: 28, md: 32 } }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
                   Manage Announcements
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1" sx={{ opacity: 0.9, fontSize: { xs: '0.875rem', md: '1rem' } }}>
                   Create and manage public announcements
                 </Typography>
               </Box>
@@ -223,6 +229,11 @@ export default function AdminAnnouncements() {
                 color: 'primary.main',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 fontWeight: 'bold',
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.5 },
+                fontSize: { xs: '0.875rem', md: '1rem' },
+                width: { xs: '100%', sm: 'auto' },
+                minWidth: { sm: 200 },
               }}
             >
               New Announcement

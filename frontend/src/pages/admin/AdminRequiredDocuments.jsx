@@ -35,7 +35,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
 } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../services/apiService';
 
 export default function AdminRequiredDocuments() {
   const [requiredDocs, setRequiredDocs] = useState([]);
@@ -168,8 +168,15 @@ export default function AdminRequiredDocuments() {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" fontWeight="bold">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 2,
+          gap: 2
+        }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
             Required Documents
           </Typography>
           <Button
@@ -179,13 +186,17 @@ export default function AdminRequiredDocuments() {
             sx={{
               borderRadius: 2,
               textTransform: 'none',
-              px: 3,
+              px: { xs: 2, md: 3 },
+              py: { xs: 1, md: 1.25 },
+              fontSize: { xs: '0.875rem', md: '1rem' },
+              width: { xs: '100%', sm: 'auto' },
+              minWidth: { sm: 220 },
             }}
           >
             Add Required Document
           </Button>
         </Box>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
           Manage required documents for each service. Users must upload these documents when applying.
         </Typography>
       </Box>

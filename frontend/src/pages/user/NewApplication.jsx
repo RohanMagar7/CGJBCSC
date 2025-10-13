@@ -14,7 +14,7 @@ import {
   Grid,
 } from '@mui/material';
 import { Send, ArrowBack } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 

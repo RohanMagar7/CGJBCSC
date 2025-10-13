@@ -24,7 +24,7 @@ import {
   Phone,
   Info,
 } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../../pages/services/apiService';
 
 export default function PaymentDetailsDialog({ open, onClose, application, payment }) {
   const [paymentSettings, setPaymentSettings] = useState(null);

@@ -38,7 +38,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': 'You do not have permission to view this profile.'}, status=403)
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    queryset = Service.objects.all()
+    queryset = Service.objects.prefetch_related('required_documents').all()  # Optimize with prefetch_related
     serializer_class = ServiceSerializer
     def get_permissions(self):
         if self.request.method in ['POST','PUT','PATCH','DELETE']:
@@ -46,7 +46,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
 class RequiredDocumentViewSet(viewsets.ModelViewSet):
-    queryset = RequiredDocument.objects.all()
+    queryset = RequiredDocument.objects.select_related('service').all()  # Optimize with select_related
     serializer_class = RequiredDocumentSerializer
     
     def get_permissions(self):
@@ -57,22 +57,22 @@ class RequiredDocumentViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
     
     def get_queryset(self):
-        queryset = RequiredDocument.objects.all()
+        queryset = RequiredDocument.objects.select_related('service').all()  # Optimize FK lookup
         service_id = self.request.query_params.get('service_id', None)
         if service_id is not None:
             queryset = queryset.filter(service_id=service_id)
         return queryset
 
 class UserApplicationViewSet(viewsets.ModelViewSet):
-    queryset = UserApplication.objects.all()
+    queryset = UserApplication.objects.select_related('user', 'service').prefetch_related('documents', 'documents__required_document').all()  # Optimize with select_related and prefetch_related
     serializer_class = UserApplicationSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
         if user.role == 'admin':
-            return UserApplication.objects.all()
-        return UserApplication.objects.filter(user=user)
+            return UserApplication.objects.select_related('user', 'service').prefetch_related('documents', 'documents__required_document').all()
+        return UserApplication.objects.select_related('user', 'service').prefetch_related('documents', 'documents__required_document').filter(user=user)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -154,12 +154,12 @@ Sewa Portal
         return Response({'success':True,'status':app.status})
 
 class UserDocumentViewSet(viewsets.ModelViewSet):
-    queryset = UserDocument.objects.all()
+    queryset = UserDocument.objects.select_related('application', 'application__user', 'application__service', 'required_document').all()  # Optimize with select_related
     serializer_class = UserDocumentSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
 class FinalDocumentViewSet(viewsets.ModelViewSet):
-    queryset = FinalDocument.objects.all()
+    queryset = FinalDocument.objects.select_related('application', 'application__user', 'application__service').all()  # Optimize with select_related
     serializer_class = FinalDocumentSerializer
     def get_permissions(self):
         if self.request.method in ['POST','PUT','PATCH','DELETE']:
@@ -169,8 +169,8 @@ class FinalDocumentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'admin':
-            return FinalDocument.objects.all()
-        return FinalDocument.objects.filter(application__user=user)
+            return FinalDocument.objects.select_related('application', 'application__user', 'application__service').all()
+        return FinalDocument.objects.select_related('application', 'application__user', 'application__service').filter(application__user=user)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -179,7 +179,7 @@ class FinalDocumentViewSet(viewsets.ModelViewSet):
 
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
-    queryset = Announcement.objects.all()
+    queryset = Announcement.objects.select_related('created_by').all()  # Optimize with select_related
     serializer_class = AnnouncementSerializer
     
     def get_permissions(self):
@@ -192,24 +192,24 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Public users only see active announcements
         if self.request.user.is_authenticated and hasattr(self.request.user, 'role') and self.request.user.role == 'admin':
-            return Announcement.objects.all()
-        return Announcement.objects.filter(is_active=True)
+            return Announcement.objects.select_related('created_by').all()
+        return Announcement.objects.filter(is_active=True).select_related('created_by')
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all()
+    queryset = Payment.objects.select_related('application', 'application__user', 'application__service').all()  # Optimize with select_related
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
         if user.role == 'admin':
-            return Payment.objects.all()
+            return Payment.objects.select_related('application', 'application__user', 'application__service').all()
         # Users can only see their own payments
-        return Payment.objects.filter(application__user=user)
+        return Payment.objects.select_related('application', 'application__user', 'application__service').filter(application__user=user)
     
     def get_permissions(self):
         # Allow users to create payments for their own applications
@@ -228,7 +228,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         # Verify the application belongs to the user (unless admin)
         if user.role != 'admin':
             try:
-                application = UserApplication.objects.get(application_id=application_id)
+                application = UserApplication.objects.select_related('user').get(application_id=application_id)  # Optimize FK lookup
                 if application.user != user:
                     raise PermissionDenied("You can only create payments for your own applications.")
             except UserApplication.DoesNotExist:

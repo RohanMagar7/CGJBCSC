@@ -49,7 +49,7 @@ import {
   Refresh,
   Badge,
 } from '@mui/icons-material';
-import apiService from '../../services/apiService';
+import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminUsers() {
