@@ -29,13 +29,17 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-development-secret')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 # Allow hosts from an env var (comma-separated) or sensible local defaults
-# ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "cgjbcsc.onrender.com",
-    "https://cgjbcsc.netlify.app",  # ✅ add this too
-]
+# DJANGO_ALLOWED_HOSTS should be a comma-separated list of hostnames (no scheme)
+raw_allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS')
+if raw_allowed_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'cgjbcsc.onrender.com',
+        'cgjbcsc.netlify.app',
+    ]
 
 
 # Application definition
@@ -187,6 +191,8 @@ else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        # Production frontend (Netlify) origin — make sure this matches your Netlify site
+        "https://cgjbcsc.netlify.app",
     ]
 
 CORS_ALLOW_CREDENTIALS = True
