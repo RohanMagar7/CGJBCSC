@@ -176,3 +176,12 @@ CORS_ALLOW_CREDENTIALS = True
 # DEFAULT AUTO FIELD
 # ------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Temporary superuser creation (remove after first run)
+import django
+from django.contrib.auth import get_user_model
+
+django.setup()
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@example.com', 'YourStrongPassword')
