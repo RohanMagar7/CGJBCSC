@@ -5,7 +5,9 @@ from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from django.core.mail import send_mail
+import logging
+
+logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.db import models
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
@@ -129,12 +131,11 @@ Sewa Portal
 """
                 
                 if app.user.email:
-                    send_mail(
-                        f"✅ Application Approved - Payment Required for {app.service.service_name}",
-                        email_body,
-                        None, 
-                        [app.user.email]
-                    )
+                    # Email sending suppressed in production deployment by design.
+                    logger.info("Suppressed email (application approved) to=%s subject=%s body=%s",
+                                app.user.email,
+                                f"✅ Application Approved - Payment Required for {app.service.service_name}",
+                                email_body)
                 
                 return Response({
                     'success': True,
@@ -145,11 +146,10 @@ Sewa Portal
             except Payment.DoesNotExist:
                 pass
         elif status == 'Rejected' and app.user.email:
-            send_mail(
-                f"Application Status: {status}",
-                f"Hello {app.user.full_name},\nYour application for {app.service.service_name} is {status}\n{('Reason: '+reason) if status=='Rejected' else ''}",
-                None, [app.user.email]
-            )
+            logger.info("Suppressed email (application rejected) to=%s subject=%s body=%s",
+                        app.user.email,
+                        f"Application Status: {status}",
+                        f"Hello {app.user.full_name},\nYour application for {app.service.service_name} is {status}\n{('Reason: '+reason) if status=='Rejected' else ''}")
         
         return Response({'success':True,'status':app.status})
 
@@ -244,18 +244,16 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment.payment_date = timezone.now()
         payment.save()
         
-        # Send notification email
+        # Send notification email (suppressed)
         if payment.application.user.email:
-            send_mail(
-                f"Payment Confirmed - {payment.application.service.service_name}",
-                f"Hello {payment.application.user.full_name},\n\n"
-                f"Your payment of NPR {payment.amount} has been confirmed.\n"
-                f"Payment Method: {payment.payment_method}\n"
-                f"Transaction ID: {payment.transaction_id or 'N/A'}\n\n"
-                f"Thank you!",
-                None,
-                [payment.application.user.email]
-            )
+            logger.info("Suppressed email (payment confirmed) to=%s subject=%s body=%s",
+                        payment.application.user.email,
+                        f"Payment Confirmed - {payment.application.service.service_name}",
+                        f"Hello {payment.application.user.full_name},\n\n"
+                        f"Your payment of NPR {payment.amount} has been confirmed.\n"
+                        f"Payment Method: {payment.payment_method}\n"
+                        f"Transaction ID: {payment.transaction_id or 'N/A'}\n\n"
+                        f"Thank you!")
         
         return Response({
             'success': True,

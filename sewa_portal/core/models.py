@@ -11,7 +11,9 @@ except Exception:
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
+import logging
+
+logger = logging.getLogger(__name__)
 
 # -------------------------
 # User Manager
@@ -266,13 +268,12 @@ def update_application_status(sender, instance, created, **kwargs):
         app = instance.application
         app.status = 'Completed'
         app.save()
-        # Email
+        # Email suppressed - log instead
         if app.user.email:
-            send_mail(
-                f"Your application for {app.service.service_name} is completed",
-                f"Hello {app.user.full_name},\nYour application is COMPLETED.",
-                None, [app.user.email]
-            )
+            logger.info("Suppressed email (application completed) to=%s subject=%s body=%s",
+                        app.user.email,
+                        f"Your application for {app.service.service_name} is completed",
+                        f"Hello {app.user.full_name},\nYour application is COMPLETED.")
 
 # -------------------------
 # Announcement Model
