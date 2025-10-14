@@ -89,15 +89,25 @@ WSGI_APPLICATION = 'sewa_portal.wsgi.application'
 # ------------------------
 # DATABASE CONFIGURATION
 # ------------------------
-# PostgreSQL only (local & Render)
-DATABASE_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://sewa_db_user:QuEI7OzPOmtlc0xKNfGlzImAvGUdvXKw@dpg-d3n92kjuibrs73bju390-a/sewa_db'
-)
+# DATABASE CONFIGURATION
+# Prefer an explicit DATABASE_URL in the environment (production). If it's not
+# set, fall back to a local SQLite database for development to avoid attempting
+# DNS resolution of a production host during local runs.
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-}
+if DATABASE_URL:
+    # Parse a Postgres (or other) URL from the environment
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    # Local development fallback
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # ------------------------
 # REST FRAMEWORK
@@ -168,7 +178,11 @@ if raw_cors:
     CORS_ALLOWED_ORIGINS = [u.strip() for u in raw_cors.split(',') if u.strip()]
 else:
     CORS_ALLOWED_ORIGINS = [
-        "https://cgjbcsc.netlify.app"
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative frontend port
+        "http://127.0.0.1:5173",  # IPv4 localhost
+        "http://127.0.0.1:3000",
+        "https://cgjbcsc.netlify.app"  # Production frontend
     ]
 CORS_ALLOW_CREDENTIALS = True
 

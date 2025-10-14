@@ -20,6 +20,27 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     
+    def create(self, request, *args, **kwargs):
+        """Override create to log incoming registration data and validation errors
+        so failures are visible in server logs for easier debugging.
+        """
+        # Avoid logging sensitive information like passwords in plaintext
+        data_to_log = dict(request.data)
+        if 'password' in data_to_log:
+            data_to_log['password'] = '********'
+
+        logger.info("Registration attempt: %s", data_to_log)
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error("Registration validation failed: %s", serializer.errors)
+            return Response(serializer.errors, status=400)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        logger.info("Registration successful for username=%s", serializer.data.get('username'))
+        return Response(serializer.data, status=201, headers=headers)
+    
     def get_permissions(self):
         # Allow anyone to register (POST)
         if self.action == 'create':
