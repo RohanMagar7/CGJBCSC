@@ -2,14 +2,44 @@ from rest_framework import serializers
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
 
 class UserSerializer(serializers.ModelSerializer):
+    # Add optional admin_secret field for admin registration
+    admin_secret = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    
     class Meta:
         model = User
         fields = '__all__'
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'role': {'read_only': True}  # Prevent direct role modification
+        }
 
     def create(self, validated_data):
+        # Extract admin_secret if provided
+        admin_secret = validated_data.pop('admin_secret', None)
         password = validated_data.pop('password', None)
-        user = User(**validated_data)
+        
+        # Check if user is trying to register as admin
+        # You can set this secret in your environment variables
+        ADMIN_SECRET_KEY = "CGJBCSC_ADMIN_2025"  # Change this to a secure secret
+        
+        # Default role is 'user'
+        role = 'user'
+        is_staff = False
+        is_superuser = False
+        
+        # If admin_secret matches, create admin user
+        if admin_secret and admin_secret == ADMIN_SECRET_KEY:
+            role = 'admin'
+            is_staff = True
+            is_superuser = True
+        
+        # Remove role from validated_data if it exists (prevent manipulation)
+        validated_data.pop('role', None)
+        validated_data.pop('is_staff', None)
+        validated_data.pop('is_superuser', None)
+        
+        # Create user with determined role
+        user = User(**validated_data, role=role, is_staff=is_staff, is_superuser=is_superuser)
         if password:
             user.set_password(password)
         user.save()
