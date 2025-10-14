@@ -9,27 +9,25 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+
 import os
 from pathlib import Path
 import dj_database_url
+from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load .env for local development
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-# Read sensitive settings from environment variables. Supply a safe development
-# default only for local development. Do NOT commit real secrets to source.
+# ------------------------
+# SECURITY CONFIGURATION
+# ------------------------
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-development-secret')
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-# Allow hosts from an env var (comma-separated) or sensible local defaults
-# DJANGO_ALLOWED_HOSTS should be a comma-separated list of hostnames (no scheme)
 raw_allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS')
 if raw_allowed_hosts:
     ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
@@ -41,9 +39,9 @@ else:
         'cgjbcsc.netlify.app',
     ]
 
-
-# Application definition
-
+# ------------------------
+# APPLICATIONS
+# ------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -54,13 +52,11 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'rest_framework',
-
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # WhiteNoise should come directly after SecurityMiddleware
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # after SecurityMiddleware
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -88,25 +84,24 @@ TEMPLATES = [
 ]
 
 AUTH_USER_MODEL = 'core.User'
-
 WSGI_APPLICATION = 'sewa_portal.wsgi.application'
 
+# ------------------------
+# DATABASE CONFIGURATION
+# ------------------------
+# PostgreSQL only (local & Render)
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL',
+    'postgresql://sewa_db_user:QuEI7OzPOmtlc0xKNfGlzImAvGUdvXKw@dpg-d3n92kjuibrs73bju390-a/sewa_db'
+)
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+}
 
-# Configure database from DATABASE_URL (Render Postgres) or fallback to sqlite
-DATABASES = {}
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-else:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-
-
+# ------------------------
+# REST FRAMEWORK
+# ------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -115,84 +110,69 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# ------------------------
+# PASSWORD VALIDATION
+# ------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# ------------------------
+# INTERNATIONALIZATION
+# ------------------------
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
+# ------------------------
+# STATIC & MEDIA FILES
+# ------------------------
 STATIC_URL = 'static/'
-# Static files: collectstatic will gather files here for the web server to serve
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Use WhiteNoise's compressed manifest storage for efficient static serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
-# Email Configuration - read from environment in production
+# ------------------------
+# EMAIL CONFIGURATION
+# ------------------------
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # set in Render as env var
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # app password in env
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Sewa Portal <{EMAIL_HOST_USER}>')
 
-# SimpleJWT Configuration
-from datetime import timedelta
+# ------------------------
+# SIMPLE JWT CONFIGURATION
+# ------------------------
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'USER_ID_FIELD': 'user_id',  # Use user_id instead of id
+    'USER_ID_FIELD': 'user_id',
     'USER_ID_CLAIM': 'user_id',
 }
 
-# CORS Configuration
-# CORS: allow local dev by default, but overridable via CORS_ALLOWED_ORIGINS env var
+# ------------------------
+# CORS CONFIGURATION
+# ------------------------
 raw_cors = os.environ.get('CORS_ALLOWED_ORIGINS')
 if raw_cors:
     CORS_ALLOWED_ORIGINS = [u.strip() for u in raw_cors.split(',') if u.strip()]
 else:
     CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        # Production frontend (Netlify) origin — make sure this matches your Netlify site
-        "https://cgjbcsc.netlify.app",
+        "https://cgjbcsc.netlify.app"
     ]
-
 CORS_ALLOW_CREDENTIALS = True
+
+# ------------------------
+# DEFAULT AUTO FIELD
+# ------------------------
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
