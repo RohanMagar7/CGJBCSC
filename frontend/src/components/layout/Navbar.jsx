@@ -124,7 +124,7 @@ const Navbar = () => {
               }}
             >
               <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                {user.username}
+                {user.full_name}
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.9, textTransform: 'capitalize' }}>
                 {user.role}
@@ -301,7 +301,7 @@ const Navbar = () => {
                       lineHeight: 1.2,
                     }}
                   >
-                    {user.username}
+                    {user.full_name}
                   </Typography>
                   <Typography 
                     variant="caption" 
@@ -334,7 +334,7 @@ const Navbar = () => {
                       fontWeight: 700,
                     }}
                   >
-                    {user.username.charAt(0).toUpperCase()}
+                    {user.full_name.charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
                 <Menu
@@ -357,7 +357,7 @@ const Navbar = () => {
                   <MenuItem disabled sx={{ opacity: 1, cursor: 'default' }}>
                     <Box>
                       <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.875rem' }}>
-                        {user.username}
+                        {user.full_name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                         {user.role}
