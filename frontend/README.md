@@ -1,24 +1,3 @@
-# Frontend - Netlify Deployment
-
-This frontend builds with Vite and is ready to deploy to Netlify.
-
-Important: the frontend expects the backend API base URL to be set in the environment variable `VITE_API_URL`.
-
-
-Netlify setup (quick):
-1. Push your code to GitHub.
-2. On Netlify → New site → Import from Git → select your repo.
-3. When prompted, set:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-4. Add an environment variable in Netlify site settings:
-   - Key: `VITE_API_URL`
-   - Value: `https://<your-backend-host>` (e.g. your Render service URL)
-5. Deploy the site. Once deployed, the frontend will call the backend at the configured URL.
-
-Notes:
-- `_redirects` is included in `public/` to ensure SPA routing works on Netlify.
-- `netlify.toml` is present to specify build/publish defaults; you can still set env vars in the Netlify UI.
 # Sewa Portal - Frontend# React + Vite
 
 
@@ -100,7 +79,7 @@ If you are developing a production application, we recommend using TypeScript wi
    ```
 
 3. **Configure environment variables:**
-   Create a `.env` file in the frontend directory and set `VITE_API_URL` for local development (do NOT commit this file):
+   Create a `.env` file in the frontend directory:
    ```env
    VITE_API_URL=http://localhost:8000
    ```

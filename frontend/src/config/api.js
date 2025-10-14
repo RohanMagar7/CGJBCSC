@@ -1,5 +1,10 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Priority:
+// 1. Runtime override via `window.__env.VITE_API_URL` (useful for changing API without rebuilding)
+// 2. Vite-injected build-time env `import.meta.env.VITE_API_URL`
+// 3. Fallback to localhost for local development
+const runtimeApi = typeof window !== 'undefined' && window.__env && window.__env.VITE_API_URL;
+export const API_BASE_URL = runtimeApi || import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export const API_ENDPOINTS = {
   // Auth
   TOKEN: '/api/token/',

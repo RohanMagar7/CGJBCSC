@@ -12,7 +12,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 // Eager load authentication pages (frequently accessed)
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Home from './pages/user/Home';
+import Home from './pages/user/Home'
 
 // Lazy load other pages for better initial load time
 const Applications = lazy(() => import('./pages/user/Applications'));
