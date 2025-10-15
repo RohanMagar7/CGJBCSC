@@ -215,10 +215,10 @@ class Payment(models.Model):
 # File Validation
 # -------------------------
 def validate_file(file):
-    max_size = 5 * 1024 * 1024  # 5MB
+    max_size = 250 * 1024  # 250KB
     allowed_types = ['application/pdf', 'image/jpeg', 'image/png']
     if file.size > max_size:
-        raise ValidationError("File too large. Max size 5MB.")
+        raise ValidationError("File too large. Maximum file size is 250KB.")
     if file.content_type not in allowed_types:
         raise ValidationError("Unsupported file type. Only PDF, JPEG, PNG allowed.")
 

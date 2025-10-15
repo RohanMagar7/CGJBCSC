@@ -91,11 +91,11 @@ const ApplicationDetail = () => {
     const file = e.target.files[0];
     if (file) {
       // Validate file
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 250 * 1024; // 250KB
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
       
       if (file.size > maxSize) {
-        setError('File size must be less than 5MB');
+        setError(`File size must be less than 250KB. Your file is ${(file.size / 1024).toFixed(2)}KB.`);
         return;
       }
       
@@ -524,12 +524,12 @@ const ApplicationDetail = () => {
             
             {selectedFile && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
               </Alert>
             )}
             
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
-              Accepted: PDF, JPEG, PNG (Max 5MB)
+              Accepted: PDF, JPEG, PNG (Max 250KB)
             </Typography>
           </Box>
         </DialogContent>

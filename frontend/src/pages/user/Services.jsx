@@ -110,6 +110,24 @@ export default function Services() {
   };
 
   const handleFileChange = (requiredDocId, file) => {
+    // Validate file size (250KB = 256000 bytes)
+    const maxSize = 250 * 1024; // 250KB
+    
+    if (file.size > maxSize) {
+      setError(`File "${file.name}" is too large. Maximum file size is 250KB. Your file is ${(file.size / 1024).toFixed(2)}KB.`);
+      return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setError(`File "${file.name}" has an invalid type. Only PDF, JPEG, and PNG files are allowed.`);
+      return;
+    }
+    
+    // Clear any previous errors
+    setError('');
+    
     setDocumentFiles((prev) => ({
       ...prev,
       [requiredDocId]: file,
@@ -602,7 +620,7 @@ export default function Services() {
                   Upload Required Documents
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  Please upload all required documents (PDF, JPG, PNG). Maximum file size: 5MB per file.
+                  Please upload all required documents (PDF, JPG, PNG). Maximum file size: 250KB per file.
                 </Typography>
 
                 {/* Show Required Documents List */}
