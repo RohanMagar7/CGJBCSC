@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
-  Box,
   Paper,
   Typography,
   TextField,
@@ -12,11 +11,9 @@ import {
   InputAdornment,
   IconButton,
   Grid,
-  FormControlLabel,
-  Checkbox,
-  Collapse,
+  Box,
 } from '@mui/material';
-import { Visibility, VisibilityOff, PersonAdd, AdminPanelSettings } from '@mui/icons-material';
+import { Visibility, VisibilityOff, PersonAdd } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
@@ -27,11 +24,8 @@ const Register = () => {
     email: '',
     phone_number: '',
     role: 'user',
-    admin_secret: '', // Add admin secret field
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showAdminSecret, setShowAdminSecret] = useState(false);
-  const [registerAsAdmin, setRegisterAsAdmin] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,13 +36,6 @@ const Register = () => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
-  };
-
-  const handleAdminCheckbox = (e) => {
-    setRegisterAsAdmin(e.target.checked);
-    if (!e.target.checked) {
-      setFormData({ ...formData, admin_secret: '' });
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -250,66 +237,6 @@ const Register = () => {
                     ),
                   }}
                 />
-              </Grid>
-
-              {/* Admin Registration Option */}
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={registerAsAdmin}
-                      onChange={handleAdminCheckbox}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <AdminPanelSettings fontSize="small" />
-                      <Typography variant="body2">Register as Admin</Typography>
-                    </Box>
-                  }
-                />
-              </Grid>
-
-              {/* Admin Secret Key Field - Only shows when checkbox is checked */}
-              <Grid item xs={12}>
-                <Collapse in={registerAsAdmin}>
-                  <TextField
-                    fullWidth
-                    label="Admin Secret Key"
-                    name="admin_secret"
-                    type={showAdminSecret ? 'text' : 'password'}
-                    value={formData.admin_secret}
-                    onChange={handleChange}
-                    required={registerAsAdmin}
-                    helperText="Enter the admin secret key to register as admin"
-                    size="medium"
-                    sx={{
-                      '& .MuiInputBase-root': {
-                        fontSize: { xs: '0.875rem', sm: '1rem' },
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: { xs: '0.875rem', sm: '1rem' },
-                      },
-                      '& .MuiFormHelperText-root': {
-                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      },
-                    }}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() => setShowAdminSecret(!showAdminSecret)}
-                            edge="end"
-                            size={window.innerWidth < 600 ? 'small' : 'medium'}
-                          >
-                            {showAdminSecret ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Collapse>
               </Grid>
             </Grid>
 
