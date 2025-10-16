@@ -280,7 +280,7 @@ const AdminApplicationReview = () => {
                       }
                     >
                       <ListItemText
-                        primary={`Document #${doc.document_id}`}
+                        primary={doc.document_name || `Document #${doc.document_id}`}
                         secondary={new Date(doc.uploaded_at).toLocaleDateString()}
                       />
                     </ListItem>
