@@ -246,16 +246,33 @@ export default function AdminUsers() {
             borderRadius: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                <ManageAccounts sx={{ fontSize: 32 }} />
+              <Avatar sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)', 
+                width: { xs: 48, sm: 56 }, 
+                height: { xs: 48, sm: 56 } 
+              }}>
+                <ManageAccounts sx={{ fontSize: { xs: 28, sm: 32 } }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 'bold', 
+                  mb: 0.5,
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                }}>
                   Manage Users
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1" sx={{ 
+                  opacity: 0.9,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
                   View and manage user accounts
                 </Typography>
               </Box>
@@ -270,6 +287,8 @@ export default function AdminUsers() {
                 color: 'primary.main',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 fontWeight: 'bold',
+                alignSelf: { xs: 'flex-end', sm: 'auto' },
+                minWidth: { xs: 'auto', sm: 'auto' },
               }}
             >
               Refresh
