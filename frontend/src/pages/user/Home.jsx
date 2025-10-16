@@ -107,7 +107,7 @@ export default function Home() {
       try {
         const applicationsResponse = await apiService.getApplications();
         totalApplications = applicationsResponse.data?.length || 0;
-        
+
         // Calculate success rate (completed applications / total applications)
         completedApplications = applicationsResponse.data?.filter(
           app => app.status === 'Completed'
@@ -116,39 +116,39 @@ export default function Home() {
         console.log('Unable to fetch applications count');
       }
 
-      const successRate = totalApplications > 0 
-        ? Math.round((completedApplications / totalApplications) * 100) 
+      const successRate = totalApplications > 0
+        ? Math.round((completedApplications / totalApplications) * 100)
         : 95; // Default fallback
 
       // Update stats with real data
       setStats([
-        { 
-          icon: <GroupIcon sx={{ fontSize: 40 }} />, 
-          value: totalUsers > 0 
+        {
+          icon: <GroupIcon sx={{ fontSize: 40 }} />,
+          value: totalUsers > 0
             ? (totalUsers > 1000 ? `${(totalUsers / 1000).toFixed(1)}K+` : `${totalUsers}+`)
             : '100+', // Fallback if no access
-          label: 'Happy Citizens', 
-          color: '#667eea' 
+          label: 'Happy Citizens',
+          color: '#667eea'
         },
-        { 
-          icon: <DescriptionIcon sx={{ fontSize: 40 }} />, 
+        {
+          icon: <DescriptionIcon sx={{ fontSize: 40 }} />,
           value: totalApplications > 0
             ? (totalApplications > 1000 ? `${(totalApplications / 1000).toFixed(1)}K+` : `${totalApplications}+`)
             : '50+', // Fallback if no access
-          label: 'Applications', 
-          color: '#f093fb' 
+          label: 'Applications',
+          color: '#f093fb'
         },
-        { 
-          icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, 
-          value: `${totalServices}+`, 
-          label: 'Services', 
-          color: '#43e97b' 
+        {
+          icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />,
+          value: `${totalServices}+`,
+          label: 'Services',
+          color: '#43e97b'
         },
-        { 
-          icon: <VerifiedIcon sx={{ fontSize: 40 }} />, 
-          value: `${successRate}%`, 
-          label: 'Success Rate', 
-          color: '#4facfe' 
+        {
+          icon: <VerifiedIcon sx={{ fontSize: 40 }} />,
+          value: `${successRate}%`,
+          label: 'Success Rate',
+          color: '#4facfe'
         },
       ]);
     } catch (error) {
@@ -265,7 +265,7 @@ export default function Home() {
             >
               Your one-stop solution for all government services. Fast, secure, and accessible from anywhere.
             </Typography>
-            
+
             {/* Conditional Buttons - Show only for non-logged-in users */}
             {!user && (
               <Stack
@@ -523,7 +523,7 @@ export default function Home() {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Transforming Public Services
+                Empowering Citizens Through Digital Services
               </Typography>
               <Typography
                 variant="h6"
@@ -536,11 +536,12 @@ export default function Home() {
                   fontWeight: 400,
                 }}
               >
-                Digital Sewa Portal is revolutionizing how citizens interact with government services.
-                Our platform <strong style={{ color: '#667eea' }}>eliminates bureaucracy</strong>,{' '}
-                <strong style={{ color: '#764ba2' }}>reduces processing time</strong>, and provides{' '}
-                <strong style={{ color: '#43e97b' }}>transparency</strong> at every step.
+                <strong style={{ color: '#667eea' }}>Chhatrapati Graphics & Jay Bhagwan (CSC) Maha e-Seva Kendra</strong>{' '}
+                is <strong style={{ color: '#764ba2' }}>empowering citizens through digital services</strong>, transforming{' '}
+                how people across Maharashtra access government and online facilities. Our mission is to bring{' '}
+                <strong style={{ color: '#43e97b' }}>every essential public service</strong> to your fingertips eliminating long queues, paperwork, and delays.
               </Typography>
+
               <Typography
                 variant="body1"
                 paragraph
@@ -551,12 +552,15 @@ export default function Home() {
                   mb: 4,
                 }}
               >
-                With cutting-edge technology and user-centric design, we're making government
-                services accessible to everyone, everywhere. Join thousands of satisfied citizens
-                who trust us for their service needs.
+                By combining technology with trust, we make official processes faster, easier, and more transparent —
+                from caste and income certificates to scholarships, licenses, and more. With doorstep digital services,
+                secure processing, and instant updates via WhatsApp, we help citizens save time and effort while ensuring
+                accuracy and reliability. Join thousands who rely on us 
+              <strong style={{color: '#764ba2'}}> your one-stop center for every e-service in Maharashtra.
+              </strong>
               </Typography>
 
-              {/* Stats Row */}
+              {/* Stats Row
               <Grid container spacing={2} sx={{ mb: 3 }} justifyContent="center">
                 {[
                   { number: '10K+', label: 'Users', color: '#667eea' },
@@ -578,7 +582,7 @@ export default function Home() {
                     </Box>
                   </Grid>
                 ))}
-              </Grid>
+              </Grid> */}
 
               {!user && (
                 <Button
@@ -634,13 +638,7 @@ export default function Home() {
                     gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     delay: 0,
                   },
-                  {
-                    icon: <SecurityIcon sx={{ fontSize: 40 }} />,
-                    title: 'Secure Platform',
-                    desc: 'Bank-level encryption protects your data',
-                    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    delay: 0.1,
-                  },
+                
                   {
                     icon: <AccessTimeIcon sx={{ fontSize: 40 }} />,
                     title: 'Always Available',
@@ -656,12 +654,14 @@ export default function Home() {
                     delay: 0.3,
                   },
                 ].map((feature, index) => (
-                  <Grid item xs={6} key={index}>
+                  <Grid item xs={6} key={index} sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Card
                       elevation={0}
                       sx={{
                         height: '100%',
                         minHeight: 180,
+                        maxWidth: 280,
+                        width: '100%',
                         borderRadius: 4,
                         border: '1px solid',
                         borderColor: 'grey.100',
@@ -883,9 +883,9 @@ export default function Home() {
                         height: 4,
                         background:
                           announcement.type === 'success' ? 'linear-gradient(90deg, #43e97b 0%, #38f9d7 100%)' :
-                          announcement.type === 'warning' ? 'linear-gradient(90deg, #f093fb 0%, #f5576c 100%)' :
-                          announcement.type === 'error' ? 'linear-gradient(90deg, #fa709a 0%, #fee140 100%)' :
-                          'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)',
+                            announcement.type === 'warning' ? 'linear-gradient(90deg, #f093fb 0%, #f5576c 100%)' :
+                              announcement.type === 'error' ? 'linear-gradient(90deg, #fa709a 0%, #fee140 100%)' :
+                                'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)',
                       },
                     }}
                   >
@@ -926,12 +926,12 @@ export default function Home() {
                           })}
                         </Typography>
                       </Box>
-                      <Typography 
-                        variant="h6" 
-                        fontWeight="bold" 
-                        gutterBottom 
+                      <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        gutterBottom
                         title={announcement.title}
-                        sx={{ 
+                        sx={{
                           mb: 1.5,
                           fontSize: '1.1rem',
                           overflow: 'hidden',
@@ -945,11 +945,11 @@ export default function Home() {
                       >
                         {announcement.title}
                       </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
                         title={announcement.content}
-                        sx={{ 
+                        sx={{
                           fontSize: '0.875rem',
                           lineHeight: 1.6,
                           overflow: 'hidden',
