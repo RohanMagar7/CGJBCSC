@@ -51,9 +51,16 @@ export default function Home() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([
+    { icon: <GroupIcon sx={{ fontSize: 40 }} />, value: '0', label: 'Happy Citizens', color: '#667eea' },
+    { icon: <DescriptionIcon sx={{ fontSize: 40 }} />, value: '0', label: 'Applications', color: '#f093fb' },
+    { icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, value: '0', label: 'Services', color: '#43e97b' },
+    { icon: <VerifiedIcon sx={{ fontSize: 40 }} />, value: '0%', label: 'Success Rate', color: '#4facfe' },
+  ]);
 
   useEffect(() => {
     fetchAnnouncements();
+    fetchStats();
   }, []);
 
   const fetchAnnouncements = async () => {
@@ -70,6 +77,83 @@ export default function Home() {
       setAnnouncements([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      let totalUsers = 0;
+      let totalApplications = 0;
+      let completedApplications = 0;
+      let totalServices = 0;
+
+      // Fetch services count (public endpoint)
+      try {
+        const servicesResponse = await apiService.getServices();
+        totalServices = servicesResponse.data?.length || 0;
+      } catch (error) {
+        console.error('Error fetching services:', error);
+      }
+
+      // Try to fetch users and applications (may require admin permissions)
+      try {
+        const usersResponse = await apiService.getUsers();
+        totalUsers = usersResponse.data?.length || 0;
+      } catch (error) {
+        // If unauthorized, use default/fallback value
+        console.log('Unable to fetch users count');
+      }
+
+      try {
+        const applicationsResponse = await apiService.getApplications();
+        totalApplications = applicationsResponse.data?.length || 0;
+        
+        // Calculate success rate (completed applications / total applications)
+        completedApplications = applicationsResponse.data?.filter(
+          app => app.status === 'Completed'
+        ).length || 0;
+      } catch (error) {
+        console.log('Unable to fetch applications count');
+      }
+
+      const successRate = totalApplications > 0 
+        ? Math.round((completedApplications / totalApplications) * 100) 
+        : 95; // Default fallback
+
+      // Update stats with real data
+      setStats([
+        { 
+          icon: <GroupIcon sx={{ fontSize: 40 }} />, 
+          value: totalUsers > 0 
+            ? (totalUsers > 1000 ? `${(totalUsers / 1000).toFixed(1)}K+` : `${totalUsers}+`)
+            : '100+', // Fallback if no access
+          label: 'Happy Citizens', 
+          color: '#667eea' 
+        },
+        { 
+          icon: <DescriptionIcon sx={{ fontSize: 40 }} />, 
+          value: totalApplications > 0
+            ? (totalApplications > 1000 ? `${(totalApplications / 1000).toFixed(1)}K+` : `${totalApplications}+`)
+            : '50+', // Fallback if no access
+          label: 'Applications', 
+          color: '#f093fb' 
+        },
+        { 
+          icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, 
+          value: `${totalServices}+`, 
+          label: 'Services', 
+          color: '#43e97b' 
+        },
+        { 
+          icon: <VerifiedIcon sx={{ fontSize: 40 }} />, 
+          value: `${successRate}%`, 
+          label: 'Success Rate', 
+          color: '#4facfe' 
+        },
+      ]);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      // Keep default values if fetch fails
     }
   };
 
@@ -98,13 +182,6 @@ export default function Home() {
       description: 'Our dedicated support team is always ready to help you with your queries.',
       gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
     },
-  ];
-
-  const stats = [
-    { icon: <GroupIcon sx={{ fontSize: 40 }} />, value: '10K+', label: 'Happy Citizens', color: '#667eea' },
-    { icon: <DescriptionIcon sx={{ fontSize: 40 }} />, value: '25K+', label: 'Applications', color: '#f093fb' },
-    { icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, value: '15+', label: 'Services', color: '#43e97b' },
-    { icon: <VerifiedIcon sx={{ fontSize: 40 }} />, value: '98%', label: 'Success Rate', color: '#4facfe' },
   ];
 
   const aboutPoints = [
@@ -149,7 +226,7 @@ export default function Home() {
           <Box sx={{ textAlign: 'center', maxWidth: 900, mx: 'auto' }}>
             <Chip
               icon={<VerifiedIcon />}
-              label="Government of Nepal - Digital Initiative"
+              label="Special offer: 15% off on every service for Beed residents!"
               sx={{
                 bgcolor: 'rgba(255,255,255,0.25)',
                 backdropFilter: 'blur(10px)',
@@ -172,7 +249,7 @@ export default function Home() {
                 textShadow: '0 4px 12px rgba(0,0,0,0.2)',
               }}
             >
-              Digital Sewa Portal
+              Chhatrapati Graphics And Jay Bhagwan Common Service Centre
             </Typography>
             <Typography
               variant="h5"
@@ -219,7 +296,7 @@ export default function Home() {
                     transition: 'all 0.3s ease',
                   }}
                 >
-                  Get Started Free
+                  Get Started
                 </Button>
                 <Button
                   variant="outlined"
