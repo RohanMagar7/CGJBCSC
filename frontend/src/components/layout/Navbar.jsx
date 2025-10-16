@@ -303,7 +303,7 @@ const Navbar = () => {
                   >
                     {user.full_name}
                   </Typography>
-                  <Typography 
+                  {/* <Typography 
                     variant="caption" 
                     sx={{ 
                       color: 'text.secondary',
@@ -312,7 +312,7 @@ const Navbar = () => {
                     }}
                   >
                     {user.role}
-                  </Typography>
+                  </Typography> */}
                 </Box>
                 <IconButton 
                   onClick={handleMenu} 
@@ -359,9 +359,9 @@ const Navbar = () => {
                       <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.875rem' }}>
                         {user.full_name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {/* <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                         {user.role}
-                      </Typography>
+                      </Typography> */}
                     </Box>
                   </MenuItem>
                   <MenuItem 

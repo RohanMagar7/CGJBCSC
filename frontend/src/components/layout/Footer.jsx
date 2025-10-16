@@ -31,7 +31,7 @@ const Footer = () => {
           
           <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link
-              href="https://github.com"
+              href="https://github.com/rohanmagar7"
               color="inherit"
               sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
             >
@@ -39,7 +39,7 @@ const Footer = () => {
               <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>GitHub</Typography>
             </Link>
             <Link
-              href="mailto:support@sewaportal.com"
+              href="mailto:"
               color="inherit"
               sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
             >
@@ -58,8 +58,13 @@ const Footer = () => {
           display="block"
           sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
         >
-          Digital Service Application Management System
-        </Typography>
+         <Link
+              href="https://www.linkedin.com/in/rohanmagar7"
+              color="inherit"
+              underline="none" 
+            >
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Dev by Rohan Magar</Typography>
+            </Link></Typography>
       </Container>
     </Box>
   );
