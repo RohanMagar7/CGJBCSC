@@ -7,7 +7,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {
             'password': {'write_only': True},
-            'role': {'read_only': True}  # Prevent direct role modification
         }
 
     def create(self, validated_data):
@@ -29,6 +28,35 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
         return user
+    
+    def update(self, instance, validated_data):
+        """
+        Update user details. 
+        Only admins can update role field via the API (protected in views).
+        """
+        # Handle password update separately
+        password = validated_data.pop('password', None)
+        
+        # Update role if provided (only admins can do this, protected in view)
+        if 'role' in validated_data:
+            role = validated_data.get('role')
+            if role == 'admin':
+                instance.is_staff = True
+                instance.is_superuser = True
+            else:
+                instance.is_staff = False
+                instance.is_superuser = False
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Update password if provided
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
 
 class RequiredDocumentSerializer(serializers.ModelSerializer):
     class Meta:
