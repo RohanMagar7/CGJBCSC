@@ -81,9 +81,14 @@ class UserDocumentSerializer(serializers.ModelSerializer):
                   'required_document_name', 'file_path', 'file_url', 'uploaded_at']
 
     def get_file_url(self, obj):
-        request = self.context.get('request')
-        if obj.file_path and request:
-            return request.build_absolute_uri(obj.file_path.url)
+        """
+        Return the Dropbox temporary URL directly.
+        With Dropbox storage, obj.file_path.url returns a Dropbox download link.
+        No need to build absolute URI - it's already a full URL.
+        """
+        if obj.file_path:
+            # This returns the Dropbox temporary URL (valid for 4 hours)
+            return obj.file_path.url
         return None
 
 class FinalDocumentSerializer(serializers.ModelSerializer):
@@ -93,9 +98,14 @@ class FinalDocumentSerializer(serializers.ModelSerializer):
         fields = ['final_doc_id', 'application', 'file_path', 'file_url', 'uploaded_at']
 
     def get_file_url(self, obj):
-        request = self.context.get('request')
-        if obj.file_path and request:
-            return request.build_absolute_uri(obj.file_path.url)
+        """
+        Return the Dropbox temporary URL directly.
+        With Dropbox storage, obj.file_path.url returns a Dropbox download link.
+        No need to build absolute URI - it's already a full URL.
+        """
+        if obj.file_path:
+            # This returns the Dropbox temporary URL (valid for 4 hours)
+            return obj.file_path.url
         return None
 
 class UserApplicationSerializer(serializers.ModelSerializer):
@@ -138,10 +148,14 @@ class PaymentSettingsSerializer(serializers.ModelSerializer):
         read_only_fields = ['settings_id', 'created_at', 'updated_at']
     
     def get_qr_code_url(self, obj):
+        """
+        Return the Dropbox temporary URL directly.
+        With Dropbox storage, obj.qr_code_image.url returns a Dropbox download link.
+        No need to build absolute URI - it's already a full URL.
+        """
         if obj.qr_code_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.qr_code_image.url)
+            # This returns the Dropbox temporary URL (valid for 4 hours)
+            return obj.qr_code_image.url
         return None
 
 class AnnouncementSerializer(serializers.ModelSerializer):

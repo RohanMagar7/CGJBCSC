@@ -1,0 +1,39 @@
+# Django/Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.sqlite3
+db.sqlite3
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Media files (using Dropbox storage - no local media)
+media/
+
+# Static files
+staticfiles/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

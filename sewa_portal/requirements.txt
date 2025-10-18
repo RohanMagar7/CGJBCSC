@@ -13,6 +13,10 @@ PyJWT==2.10.1
 # CORS support
 django-cors-headers==4.9.0
 
+# Storage backends
+django-storages==1.14.4
+dropbox==12.0.2
+
 # Core Python dependencies
 asgiref==3.10.0
 sqlparse==0.5.3

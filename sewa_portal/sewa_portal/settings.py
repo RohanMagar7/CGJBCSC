@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'rest_framework',
+    'storages',  # Django-storages for custom backends
 ]
 
 MIDDLEWARE = [
@@ -142,12 +143,37 @@ USE_TZ = True
 # ------------------------
 # STATIC & MEDIA FILES
 # ------------------------
+# STATIC & MEDIA FILES
+# ------------------------
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# STATICFILES_STORAGE moved to STORAGES setting below
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# ------------------------
+# DROPBOX STORAGE CONFIGURATION (NO LOCAL STORAGE)
+# ------------------------
+# All files are stored in Dropbox - no local media folder is used
+# Database stores only the file path, actual files are in Dropbox
+DROPBOX_ACCESS_TOKEN = os.environ.get(
+    'DROPBOX_ACCESS_TOKEN',
+    'sl.u.AGAPwfTF8cP4412vk421wn0eMxTsR1512HfaXmqvKLiQlg7vN_V4qTqC7DmQQLrz7thODRdKbhkGQ0wJIw0JhdMfE1DygcwwNl68BdheWWQYhudj4GjqC1WOrGwLxEzmP68t93BJgX5GoMfuMxhtvUCavCHOLPGt7hNog_HOPrHcyw4SccPoNTJavp5z0iM2eIVhNFq8Jt6GA22ipYeGOFJqZc6FtK9NDPyD9PXycF1iL8aC4cfX2refx0wm5e-mN0wRaETtSDgif1CGJ72vfvhmCo3IOWfuw_BOMQphes8Y-Cb6JN3ynYEf6iY11728TWe_R7x-US6uUKs4djJoMpVmaanrx6vroWSPdg8PsTAAfSIwQ5O1tXl7JuOz84aO_8me8rB8Y_UZIom-G6DjomUQGT9GrG_J40gYgu6XyI_3cWSNs7uMGQwhYOaoXZ5Ua2Go2wP31N9ssaNKcUU5sOGGGKhXV9Htm1onIeSdeik8OxC4AX19xpLXShg6dXZK0yL3qY4igOU87RC6gL7G_hu5Wck_5bjiAG9Za862ogCgrzdhx_0HHrZwYg2lDTJ2JA7q4ZCM6Ekx7f8AdPfc1HzMuRV2jjOzBkmO-ok0R3AK1zbFdsXgZeOhbrUTHf4YyzhN96iGSg0PP5bV7Xd8Lwshxs_9vO3JIazRRgtwDZB8cQibgov7NXK0BZlGGB1u8XDKvsd5kh-VeSJ1ON0i5QLnjYGYxA2Yb8Xuw_b2wTV4tlLg5qpmtU7bVn6Kp9vCzP5Df28DdTP1ZJxecgfvAl5dR_BexMgv3qU84EpBT3CtqEKaNNTh5Xr68cW7k7BzyihlaipFgHAZvAu7TXvUdDfFOhSRKQMxa7A87ANclmsU6EJos3XwwQ_6IgaGqVoUYUjhN2OC4aDY6lZX0LvfaTUrQ68DTOaDESrWJFqTp8oRkbJimBVLQGu_Wv1Q-uQ9Jvkviy2vPkhsntXSZYw2o9XYxCup5N1nejILTu1aBQZvofd8uCfTkOi0cU3gsc4ov51yPMEajtYZk00hGpmKwBz_7q_wX-3tH3uA1CktL5MBqC3FQmoNGJNtNH6R5hfEn6ETxYDbOzE78sMEmiGQGW_HTsyyVn8WinEANNWMBhbuIqOup7KMQVxBoGUPG7bE-OjnkBNwLTCd_dGGlvOh9o9hBI4S8Z3M1U0vlcUQeykDvxgJ_u4p_xcb6RGgZOtIu3hZjHBfpGvelkV3vyEP9sMJQyLONPuGaQfptWZDR0kPmSDRVALO7StWCbzDD_cWlu3bk2nKG23RbwH5bx86rBVsZT9HpkTkahclRwgL7K0LFJz4FHCqV7kUrFN0rtSADiHUB3luKC0UDfPrYsm4AklvEnvEQpmlBO9AqwzjxpDtV2tWqDDYc7xq60iFP_1likD50yQRv5zvv90QTq0lh3brUAtcwl1F_nlW_SGR96kRmg'
+)
+DROPBOX_ROOT_PATH = os.environ.get('DROPBOX_ROOT_PATH', '/sewa_portal')
+DROPBOX_TIMEOUT = int(os.environ.get('DROPBOX_TIMEOUT', '100'))
+
+# Django 4.2+ uses STORAGES setting (replaces DEFAULT_FILE_STORAGE)
+STORAGES = {
+    "default": {
+        "BACKEND": "core.storage_backends.DropboxStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# MEDIA_URL is not used - files are served directly from Dropbox via temporary URLs
+# No MEDIA_ROOT defined - no local media folder will be created
+
 
 # ------------------------
 # EMAIL CONFIGURATION
@@ -164,7 +190,7 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Sewa Portal <{EMAIL_
 # SIMPLE JWT CONFIGURATION
 # ------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'USER_ID_FIELD': 'user_id',
     'USER_ID_CLAIM': 'user_id',
