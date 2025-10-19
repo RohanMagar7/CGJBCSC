@@ -154,10 +154,16 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # ------------------------
 # All files are stored in Dropbox - no local media folder is used
 # Database stores only the file path, actual files are in Dropbox
-DROPBOX_ACCESS_TOKEN = os.environ.get(
-    'DROPBOX_ACCESS_TOKEN',
-    'sl.u.AGAPwfTF8cP4412vk421wn0eMxTsR1512HfaXmqvKLiQlg7vN_V4qTqC7DmQQLrz7thODRdKbhkGQ0wJIw0JhdMfE1DygcwwNl68BdheWWQYhudj4GjqC1WOrGwLxEzmP68t93BJgX5GoMfuMxhtvUCavCHOLPGt7hNog_HOPrHcyw4SccPoNTJavp5z0iM2eIVhNFq8Jt6GA22ipYeGOFJqZc6FtK9NDPyD9PXycF1iL8aC4cfX2refx0wm5e-mN0wRaETtSDgif1CGJ72vfvhmCo3IOWfuw_BOMQphes8Y-Cb6JN3ynYEf6iY11728TWe_R7x-US6uUKs4djJoMpVmaanrx6vroWSPdg8PsTAAfSIwQ5O1tXl7JuOz84aO_8me8rB8Y_UZIom-G6DjomUQGT9GrG_J40gYgu6XyI_3cWSNs7uMGQwhYOaoXZ5Ua2Go2wP31N9ssaNKcUU5sOGGGKhXV9Htm1onIeSdeik8OxC4AX19xpLXShg6dXZK0yL3qY4igOU87RC6gL7G_hu5Wck_5bjiAG9Za862ogCgrzdhx_0HHrZwYg2lDTJ2JA7q4ZCM6Ekx7f8AdPfc1HzMuRV2jjOzBkmO-ok0R3AK1zbFdsXgZeOhbrUTHf4YyzhN96iGSg0PP5bV7Xd8Lwshxs_9vO3JIazRRgtwDZB8cQibgov7NXK0BZlGGB1u8XDKvsd5kh-VeSJ1ON0i5QLnjYGYxA2Yb8Xuw_b2wTV4tlLg5qpmtU7bVn6Kp9vCzP5Df28DdTP1ZJxecgfvAl5dR_BexMgv3qU84EpBT3CtqEKaNNTh5Xr68cW7k7BzyihlaipFgHAZvAu7TXvUdDfFOhSRKQMxa7A87ANclmsU6EJos3XwwQ_6IgaGqVoUYUjhN2OC4aDY6lZX0LvfaTUrQ68DTOaDESrWJFqTp8oRkbJimBVLQGu_Wv1Q-uQ9Jvkviy2vPkhsntXSZYw2o9XYxCup5N1nejILTu1aBQZvofd8uCfTkOi0cU3gsc4ov51yPMEajtYZk00hGpmKwBz_7q_wX-3tH3uA1CktL5MBqC3FQmoNGJNtNH6R5hfEn6ETxYDbOzE78sMEmiGQGW_HTsyyVn8WinEANNWMBhbuIqOup7KMQVxBoGUPG7bE-OjnkBNwLTCd_dGGlvOh9o9hBI4S8Z3M1U0vlcUQeykDvxgJ_u4p_xcb6RGgZOtIu3hZjHBfpGvelkV3vyEP9sMJQyLONPuGaQfptWZDR0kPmSDRVALO7StWCbzDD_cWlu3bk2nKG23RbwH5bx86rBVsZT9HpkTkahclRwgL7K0LFJz4FHCqV7kUrFN0rtSADiHUB3luKC0UDfPrYsm4AklvEnvEQpmlBO9AqwzjxpDtV2tWqDDYc7xq60iFP_1likD50yQRv5zvv90QTq0lh3brUAtcwl1F_nlW_SGR96kRmg'
-)
+
+# Preferred: Use refresh token (auto-renews, never expires)
+DROPBOX_APP_KEY = os.environ.get('DROPBOX_APP_KEY', 'sx8kfslf66axldy')
+DROPBOX_APP_SECRET = os.environ.get('DROPBOX_APP_SECRET', 'kfmpvyp6uu6jtm9')
+DROPBOX_REFRESH_TOKEN = os.environ.get('DROPBOX_REFRESH_TOKEN', 'Tc-_vZ3ZcnEAAAAAAAAAASJiU0cyn0BUNVY7_E9-Z_SCaual8KdygygDWyJ8KokM')
+
+# Fallback: Access token (expires periodically - not recommended)
+DROPBOX_ACCESS_TOKEN = os.environ.get('DROPBOX_ACCESS_TOKEN', '')
+
+# Dropbox settings
 DROPBOX_ROOT_PATH = os.environ.get('DROPBOX_ROOT_PATH', '/sewa_portal')
 DROPBOX_TIMEOUT = int(os.environ.get('DROPBOX_TIMEOUT', '100'))
 
@@ -211,6 +217,30 @@ else:
         "https://cgjbcsc.netlify.app"  # Production frontend
     ]
 CORS_ALLOW_CREDENTIALS = True
+
+# ------------------------
+# PRODUCTION SECURITY SETTINGS
+# ------------------------
+# These settings are automatically applied when environment variables are set
+# Required for Django deployment checklist to pass
+
+# SSL/HTTPS Settings (only in production when SECURE_SSL_REDIRECT is set)
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False') == 'True'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # For Render proxy
+
+# HTTP Strict Transport Security (HSTS)
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False') == 'True'
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'False') == 'True'
+
+# Cookie Security (only secure in production)
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False') == 'True'
+
+# Additional Security Headers
+SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', 'True') == 'True'
+SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', 'True') == 'True'
+X_FRAME_OPTIONS = 'DENY'
 
 # ------------------------
 # DEFAULT AUTO FIELD

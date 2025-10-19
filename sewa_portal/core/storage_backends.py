@@ -19,21 +19,47 @@ from dropbox.exceptions import ApiError
 class DropboxStorage(Storage):
     """
     Custom storage backend that saves files to Dropbox.
+    Supports both access tokens and refresh tokens for auto-renewal.
     """
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.access_token = getattr(settings, 'DROPBOX_ACCESS_TOKEN', None)
         self.root_path = getattr(settings, 'DROPBOX_ROOT_PATH', '/sewa_portal')
         self.timeout = getattr(settings, 'DROPBOX_TIMEOUT', 100)
         
-        if not self.access_token:
-            raise ValueError("DROPBOX_ACCESS_TOKEN not configured in settings")
+        # Check for refresh token first (preferred - auto-renews)
+        app_key = getattr(settings, 'DROPBOX_APP_KEY', None)
+        app_secret = getattr(settings, 'DROPBOX_APP_SECRET', None)
+        refresh_token = getattr(settings, 'DROPBOX_REFRESH_TOKEN', None)
         
-        self.client = dropbox.Dropbox(
-            self.access_token,
-            timeout=self.timeout
-        )
+        # Debug: Print what we got (remove this after testing)
+        print(f"DEBUG: DROPBOX_APP_KEY = {app_key[:10] if app_key else None}...")
+        print(f"DEBUG: DROPBOX_APP_SECRET = {app_secret[:10] if app_secret else None}...")
+        print(f"DEBUG: DROPBOX_REFRESH_TOKEN = {refresh_token[:20] if refresh_token else None}...")
+        
+        if app_key and app_secret and refresh_token:
+            # Use refresh token - automatically renews access tokens
+            print("✅ Using Dropbox REFRESH TOKEN (auto-renews)")
+            self.client = dropbox.Dropbox(
+                app_key=app_key,
+                app_secret=app_secret,
+                oauth2_refresh_token=refresh_token,
+                timeout=self.timeout
+            )
+        else:
+            # Fallback to access token (will expire)
+            print("⚠️  Using Dropbox ACCESS TOKEN (will expire)")
+            access_token = getattr(settings, 'DROPBOX_ACCESS_TOKEN', None)
+            if not access_token:
+                raise ValueError(
+                    "Dropbox credentials not configured. Provide either:\n"
+                    "1. DROPBOX_APP_KEY + DROPBOX_APP_SECRET + DROPBOX_REFRESH_TOKEN (recommended), or\n"
+                    "2. DROPBOX_ACCESS_TOKEN (expires periodically)"
+                )
+            self.client = dropbox.Dropbox(
+                access_token,
+                timeout=self.timeout
+            )
     
     def _full_path(self, name):
         """
