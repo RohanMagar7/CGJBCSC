@@ -10,26 +10,59 @@ import {
   Button,
   Paper,
   Alert,
-  Chip,
   Divider,
   CardActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Avatar,
+  Stack,
+  useTheme,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
   ListAlt,
-  Description,
   Add,
   TrendingUp,
   CheckCircle,
   Schedule,
-  LocalOffer,
   ArrowForward,
   Stars,
+  HourglassEmpty,
+  AssignmentTurnedIn,
+  Cancel,
 } from '@mui/icons-material';
-import apiService from '../services/apiService';
+import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
+
+const StatCard = ({ title, value, icon, color }) => {
+    const theme = useTheme();
+    return (
+        <Card sx={{ 
+            backgroundColor: color, 
+            color: theme.palette.getContrastText(color),
+            height: '100%' 
+        }}>
+            <CardContent>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
+                        {icon}
+                    </Avatar>
+                    <Box>
+                        <Typography variant="h6" component="div" fontWeight="bold">
+                            {value}
+                        </Typography>
+                        <Typography variant="body2">
+                            {title}
+                        </Typography>
+                    </Box>
+                </Stack>
+            </CardContent>
+        </Card>
+    );
+};
 
 const Dashboard = () => {
   const [services, setServices] = useState([]);
@@ -38,6 +71,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
 
   useEffect(() => {
     fetchData();
@@ -45,12 +79,13 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [servicesRes, applicationsRes] = await Promise.all([
         apiService.getServices(),
         apiService.getApplications(),
       ]);
       setServices(servicesRes.data);
-      setApplications(applicationsRes.data);
+      setApplications(applicationsRes.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error(err);
@@ -59,217 +94,133 @@ const Dashboard = () => {
     }
   };
 
+  const getServiceName = (serviceId) => {
+    const service = services.find((s) => s.id === serviceId);
+    return service?.name || 'Unknown Service';
+  };
+
   const stats = [
     {
       title: 'Total Applications',
       value: applications.length,
-      icon: <ListAlt sx={{ fontSize: 40 }} />,
-      color: 'primary.main',
-      bgColor: 'rgba(102, 126, 234, 0.1)',
+      icon: <ListAlt />,
+      color: theme.palette.primary.main,
     },
     {
-      title: 'Pending Review',
+      title: 'Pending',
       value: applications.filter((app) => app.status === 'Pending').length,
-      icon: <Schedule sx={{ fontSize: 40 }} />,
-      color: 'warning.main',
-      bgColor: 'rgba(255, 152, 0, 0.1)',
+      icon: <HourglassEmpty />,
+      color: theme.palette.warning.main,
     },
     {
-      title: 'Approved',
-      value: applications.filter((app) => app.status === 'Approved').length,
-      icon: <CheckCircle sx={{ fontSize: 40 }} />,
-      color: 'success.main',
-      bgColor: 'rgba(76, 175, 80, 0.1)',
+      title: 'In Progress',
+      value: applications.filter((app) => app.status === 'In Progress').length,
+      icon: <TrendingUp />,
+      color: theme.palette.info.main,
     },
     {
       title: 'Completed',
       value: applications.filter((app) => app.status === 'Completed').length,
-      icon: <Stars sx={{ fontSize: 40 }} />,
-      color: 'info.main',
-      bgColor: 'rgba(33, 150, 243, 0.1)',
+      icon: <AssignmentTurnedIn />,
+      color: theme.palette.success.main,
     },
   ];
+
+  const recentApplications = applications.slice(0, 5);
+  const featuredServices = services.slice(0, 3);
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Hero Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 3, md: 5 },
-            mb: 4,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            borderRadius: 3,
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: -50,
-              right: -50,
-              width: 200,
-              height: 200,
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.1)',
-            },
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              bottom: -30,
-              left: -30,
-              width: 150,
-              height: 150,
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.1)',
-            },
-          }}
-        >
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Chip
-              icon={<Stars />}
-              label="Digital Sewa Portal"
-              sx={{
-                mb: 2,
-                bgcolor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                fontWeight: 'bold',
-              }}
-            />
-            <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Welcome back, {user?.username}! 👋
+    <Container sx={{ py: 8 }}>
+        <Box mb={4}>
+            <Typography variant="h4" component="h1" fontWeight="bold">
+                Welcome, {user?.username || 'User'}!
             </Typography>
-            <Typography variant="h6" sx={{ mb: 3, opacity: 0.9 }}>
-              Manage your service applications and track their progress
+            <Typography color="text.secondary">
+                Here's a summary of your activities and available services.
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<Add />}
-                onClick={() => navigate('/applications/new')}
-                sx={{
-                  bgcolor: 'white',
-                  color: 'primary.main',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' },
-                  fontWeight: 'bold',
-                }}
-              >
-                New Application
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                endIcon={<ArrowForward />}
-                onClick={() => navigate('/applications')}
-                sx={{
-                  borderColor: 'white',
-                  color: 'white',
-                  '&:hover': {
-                    borderColor: 'white',
-                    bgcolor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                }}
-              >
-                View All Applications
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        
-
-        {/* Available Services Section */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
-                Available Services
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Choose from our wide range of digital services
-              </Typography>
-            </Box>
-            <Chip
-              icon={<LocalOffer />}
-              label={`${services.length} Services`}
-              color="primary"
-              variant="outlined"
-            />
-          </Box>
-          <Grid container spacing={3} sx={{ mb: 5 }}>
-            {services.slice(0, 6).map((service) => (
-              <Grid item xs={12} md={6} lg={4} key={service.service_id}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 16px rgba(102, 126, 234, 0.2)',
-                      borderColor: 'primary.main',
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box
-                      sx={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        mb: 2,
-                      }}
-                    >
-                      <Description sx={{ fontSize: 28 }} />
-                    </Box>
-                    <Typography variant="h6" gutterBottom fontWeight="bold">
-                      {service.service_name}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2, minHeight: 40 }}
-                    >
-                      {service.description || 'No description available'}
-                    </Typography>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ p: 2 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      startIcon={<Add />}
-                      onClick={() => navigate('/applications/new', { state: { service } })}
-                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
-                    >
-                      Apply Now
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
         </Box>
-      </Container>
-    </Box>
+
+        {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
+
+        {/* Stats Grid */}
+        <Grid container spacing={4} mb={6}>
+            {stats.map((stat, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                    <StatCard {...stat} />
+                </Grid>
+            ))}
+        </Grid>
+
+        <Grid container spacing={4}>
+            {/* Recent Applications */}
+            <Grid item xs={12} lg={8}>
+                <Paper sx={{ p: 3, borderRadius: 4, height: '100%' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="h6" fontWeight="bold">Recent Applications</Typography>
+                        <Button size="small" onClick={() => navigate('/applications')}>View All</Button>
+                    </Stack>
+                    <Divider />
+                    <List>
+                        {recentApplications.length > 0 ? (
+                            recentApplications.map(app => (
+                                <ListItem 
+                                    key={app.id} 
+                                    divider
+                                    secondaryAction={
+                                        <IconButton edge="end" onClick={() => navigate(`/applications/${app.id}`)}>
+                                            <ArrowForward />
+                                        </IconButton>
+                                    }
+                                >
+                                    <ListItemText 
+                                        primary={getServiceName(app.service)}
+                                        secondary={`Submitted: ${new Date(app.created_at).toLocaleDateString()}`}
+                                    />
+                                    <StatusBadge status={app.status} />
+                                </ListItem>
+                            ))
+                        ) : (
+                            <Typography color="text.secondary" sx={{ textAlign: 'center', p: 4 }}>
+                                You have no recent applications.
+                            </Typography>
+                        )}
+                    </List>
+                </Paper>
+            </Grid>
+
+            {/* Quick Actions / Featured Services */}
+            <Grid item xs={12} lg={4}>
+                <Paper sx={{ p: 3, borderRadius: 4, height: '100%' }}>
+                    <Typography variant="h6" fontWeight="bold" mb={2}>Quick Actions</Typography>
+                    <Divider sx={{ mb: 2 }}/>
+                    <Stack spacing={2}>
+                        <Button 
+                            variant="contained" 
+                            startIcon={<Add />} 
+                            onClick={() => navigate('/services')}
+                            fullWidth
+                        >
+                            Apply for a New Service
+                        </Button>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ pt: 2 }}>Featured Services</Typography>
+                        {featuredServices.map(service => (
+                            <Card key={service.id} variant="outlined">
+                                <CardContent>
+                                    <Typography variant="body1" fontWeight="bold">{service.name}</Typography>
+                                    <Typography variant="body2" color="text.secondary" noWrap>{service.description}</Typography>
+                                </CardContent>
+                                <CardActions sx={{justifyContent: 'flex-end'}}>
+                                    <Button size="small" onClick={() => navigate('/services')}>Learn More</Button>
+                                </CardActions>
+                            </Card>
+                        ))}
+                    </Stack>
+                </Paper>
+            </Grid>
+        </Grid>
+    </Container>
   );
 };
 

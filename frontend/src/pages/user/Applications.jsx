@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -26,42 +26,47 @@ import {
   DialogContentText,
   DialogActions,
   IconButton,
+  Stack,
+  TablePagination,
+  useTheme,
 } from '@mui/material';
-import { Search, Visibility, Delete } from '@mui/icons-material';
-import apiService from '../services/apiService';
+import { Search, Visibility, Delete, Add } from '@mui/icons-material';
+import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
 
 const Applications = () => {
   const [applications, setApplications] = useState([]);
-  const [filteredApplications, setFilteredApplications] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Filtering and Pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const [deleteDialog, setDeleteDialog] = useState({ open: false, application: null });
   const [deleting, setDeleting] = useState(false);
+  
   const navigate = useNavigate();
+  const theme = useTheme();
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    filterApplications();
-  }, [searchTerm, statusFilter, applications]);
-
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [appsRes, servicesRes] = await Promise.all([
         apiService.getApplications(),
         apiService.getServices(),
       ]);
-      setApplications(appsRes.data);
+      setApplications(appsRes.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
       setServices(servicesRes.data);
-      setFilteredApplications(appsRes.data);
     } catch (err) {
       setError('Failed to load applications');
       console.error(err);
@@ -70,28 +75,9 @@ const Applications = () => {
     }
   };
 
-  const filterApplications = () => {
-    let filtered = [...applications];
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((app) => app.status === statusFilter);
-    }
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter((app) => {
-        const service = services.find((s) => s.service_id === app.service);
-        return service?.service_name.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-    }
-
-    setFilteredApplications(filtered);
-  };
-
   const getServiceName = (serviceId) => {
-    const service = services.find((s) => s.service_id === serviceId);
-    return service?.service_name || 'Unknown Service';
+    const service = services.find((s) => s.id === serviceId);
+    return service?.name || 'Unknown Service';
   };
 
   const handleDeleteClick = (application) => {
@@ -100,67 +86,69 @@ const Applications = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deleteDialog.application) return;
-
     setDeleting(true);
-    setError('');
-
     try {
-      await apiService.deleteApplication(deleteDialog.application.application_id);
-      setSuccess(`Application #${deleteDialog.application.application_id} deleted successfully!`);
-      setDeleteDialog({ open: false, application: null });
-      
-      // Refresh the applications list
-      fetchData();
-      
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(''), 5000);
+      await apiService.deleteApplication(deleteDialog.application.id);
+      setSuccess('Application deleted successfully.');
+      setApplications(prev => prev.filter(app => app.id !== deleteDialog.application.id));
+      handleDeleteClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete application');
-      setDeleteDialog({ open: false, application: null });
+      setError('Failed to delete application.');
+      console.error(err);
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleDeleteCancel = () => {
+  const handleDeleteClose = () => {
     setDeleteDialog({ open: false, application: null });
   };
+
+  const filteredApplications = useMemo(() => {
+    return applications
+      .filter(app => statusFilter === 'all' || app.status === statusFilter)
+      .filter(app => {
+        const serviceName = getServiceName(app.service).toLowerCase();
+        return serviceName.includes(searchTerm.toLowerCase());
+      });
+  }, [applications, statusFilter, searchTerm, services]);
+
+  const paginatedApplications = useMemo(() => {
+    return filteredApplications.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredApplications, page, rowsPerPage]);
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4">My Applications</Typography>
+    <Container sx={{ py: 8 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
+        <Box>
+          <Typography variant="h4" component="h1" fontWeight="bold">
+            My Applications
+          </Typography>
+          <Typography color="text.secondary">
+            Track and manage all your service applications here.
+          </Typography>
+        </Box>
         <Button
           variant="contained"
-          onClick={() => navigate('/')}
+          startIcon={<Add />}
+          onClick={() => navigate('/services')}
         >
           New Application
         </Button>
-      </Box>
+      </Stack>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {success}
-        </Alert>
-      )}
-
-      {/* Filters */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Paper sx={{ p: 3, borderRadius: 4 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
           <TextField
+            fullWidth
             placeholder="Search by service name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            size="small"
-            sx={{ flexGrow: 1, minWidth: 250 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -169,123 +157,106 @@ const Applications = () => {
               ),
             }}
           />
-          
-          <FormControl size="small" sx={{ minWidth: 200 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 200 } }}>
             <InputLabel>Status</InputLabel>
             <Select
               value={statusFilter}
               label="Status"
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <MenuItem value="all">All Status</MenuItem>
+              <MenuItem value="all">All Statuses</MenuItem>
               <MenuItem value="Pending">Pending</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Rejected">Rejected</MenuItem>
+              <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Completed">Completed</MenuItem>
+              <MenuItem value="Rejected">Rejected</MenuItem>
             </Select>
           </FormControl>
-        </Box>
-      </Paper>
+        </Stack>
 
-      {/* Applications Table */}
-      {filteredApplications.length === 0 ? (
-        <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            {applications.length === 0
-              ? 'No applications yet. Start by applying for a service!'
-              : 'No applications match your filters.'}
-          </Typography>
-        </Paper>
-      ) : (
-        <TableContainer component={Paper} elevation={2}>
+        <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ backgroundColor: 'primary.light' }}>
-                <TableCell><strong>Application ID</strong></TableCell>
-                <TableCell><strong>Service</strong></TableCell>
-                <TableCell><strong>Submitted</strong></TableCell>
-                <TableCell><strong>Last Updated</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
-                <TableCell align="center"><strong>Actions</strong></TableCell>
+              <TableRow>
+                <TableCell>Service Name</TableCell>
+                <TableCell>Submitted On</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Last Updated</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredApplications.map((app) => (
-                <TableRow
-                  key={app.application_id}
-                  sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
-                >
-                  <TableCell>#{app.application_id}</TableCell>
-                  <TableCell>{getServiceName(app.service)}</TableCell>
-                  <TableCell>{new Date(app.submitted_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{new Date(app.updated_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={app.status} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Visibility />}
-                        onClick={() => navigate(`/applications/${app.application_id}`)}
-                      >
-                        View
-                      </Button>
+              {paginatedApplications.length > 0 ? (
+                paginatedApplications.map((app) => (
+                  <TableRow key={app.id} hover>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {getServiceName(app.service)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{new Date(app.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={app.status} />
+                    </TableCell>
+                    <TableCell>{new Date(app.updated_at).toLocaleDateString()}</TableCell>
+                    <TableCell align="right">
                       <IconButton
-                        color="error"
                         size="small"
-                        onClick={() => handleDeleteClick(app)}
-                        title="Delete Application"
+                        onClick={() => navigate(`/applications/${app.id}`)}
+                        title="View Details"
                       >
-                        <Delete />
+                        <Visibility />
                       </IconButton>
-                    </Box>
+                      {['Pending', 'Rejected'].includes(app.status) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(app)}
+                          title="Delete Application"
+                          sx={{ color: theme.palette.error.main }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <Typography color="text.secondary" p={4}>
+                      No applications found.
+                    </Typography>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+        
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredApplications.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+        />
+      </Paper>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialog.open}
-        onClose={handleDeleteCancel}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Delete Application</DialogTitle>
+      <Dialog open={deleteDialog.open} onClose={handleDeleteClose}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete this application?
-            {deleteDialog.application && (
-              <>
-                <br /><br />
-                <strong>Application ID:</strong> #{deleteDialog.application.application_id}
-                <br />
-                <strong>Service:</strong> {getServiceName(deleteDialog.application.service)}
-                <br />
-                <strong>Status:</strong> {deleteDialog.application.status}
-                <br /><br />
-                <span style={{ color: 'red' }}>
-                  This action cannot be undone. All related documents and payment records will also be deleted.
-                </span>
-              </>
-            )}
+            Are you sure you want to delete the application for "{getServiceName(deleteDialog.application?.service)}"? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel} disabled={deleting}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDeleteConfirm} 
-            color="error" 
-            variant="contained"
-            disabled={deleting}
-          >
+          <Button onClick={handleDeleteClose}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" disabled={deleting}>
             {deleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>

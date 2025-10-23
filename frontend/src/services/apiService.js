@@ -1,6 +1,6 @@
 import axiosInstance from './axios';
-import { API_ENDPOINTS } from '../../config/api';
-import { cacheManager, withCache } from '../../utils/cacheManager';
+import { API_ENDPOINTS } from '../config/api';
+import { cacheManager, withCache } from '../utils/cacheManager';
 
 // Cache configuration
 const CACHE_TTL = {
@@ -165,6 +165,36 @@ const apiService = {
   deleteAnnouncement: (id) => {
     cacheManager.invalidate(/^announcements/);
     return axiosInstance.delete(API_ENDPOINTS.ANNOUNCEMENT_DETAIL(id));
+  },
+  
+  // Government Schemes - Medium cache
+  getGovSchemes: withCache(
+    () => axiosInstance.get(API_ENDPOINTS.GOV_SCHEMES),
+    'gov-schemes',
+    CACHE_TTL.MEDIUM
+  ),
+  getGovScheme: (id) => {
+    const cached = cacheManager.get(`gov-scheme-${id}`, CACHE_TTL.MEDIUM);
+    if (cached) return Promise.resolve(cached);
+    
+    return axiosInstance.get(API_ENDPOINTS.GOV_SCHEME_DETAIL(id)).then(res => {
+      cacheManager.set(`gov-scheme-${id}`, res);
+      return res;
+    });
+  },
+  createGovScheme: (data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.post(API_ENDPOINTS.GOV_SCHEMES, data);
+  },
+  updateGovScheme: (id, data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    cacheManager.invalidate(`gov-scheme-${id}`);
+    return axiosInstance.patch(API_ENDPOINTS.GOV_SCHEME_DETAIL(id), data);
+  },
+  deleteGovScheme: (id) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    cacheManager.invalidate(`gov-scheme-${id}`);
+    return axiosInstance.delete(API_ENDPOINTS.GOV_SCHEME_DETAIL(id));
   },
   
   // Payments - No cache (real-time data)

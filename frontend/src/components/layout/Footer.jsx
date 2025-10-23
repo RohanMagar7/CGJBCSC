@@ -1,70 +1,51 @@
-import { Box, Container, Typography, Link, Divider } from '@mui/material';
-import { GitHub, Email } from '@mui/icons-material';
+import { Box, Container, Typography, Link, Stack, IconButton } from '@mui/material';
+import { GitHub, Email, LinkedIn } from '@mui/icons-material';
 
 const Footer = () => {
   return (
     <Box
       component="footer"
       sx={{
-        py: { xs: 2, sm: 3 },
-        px: { xs: 1, sm: 2 },
+        py: 4,
+        px: 2,
         mt: 'auto',
-        backgroundColor: (theme) =>
-          theme.palette.mode === 'light'
-            ? theme.palette.grey[200]
-            : theme.palette.grey[800],
+        backgroundColor: 'background.paper',
+        borderTop: '1px solid',
+        borderColor: 'divider',
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: { xs: 'center', sm: 'space-between' }, 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: { xs: 1.5, sm: 2 },
-          flexDirection: { xs: 'column', sm: 'row' },
-          textAlign: { xs: 'center', sm: 'left' },
-        }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-            © {new Date().getFullYear()} Sewa Portal. All rights reserved.
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={2}
+        >
+          <Typography variant="body2" color="text.secondary">
+            © {new Date().getFullYear()} CGJBCSC Portal. All rights reserved.
           </Typography>
           
-          <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link
-              href="https://github.com/rohanmagar7"
-              color="inherit"
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
-            >
-              <GitHub fontSize="small" sx={{ fontSize: { xs: 16, sm: 20 } }} />
-              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>GitHub</Typography>
-            </Link>
-            <Link
-              href="mailto:"
-              color="inherit"
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, textDecoration: 'none' }}
-            >
-              <Email fontSize="small" sx={{ fontSize: { xs: 16, sm: 20 } }} />
-              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Contact</Typography>
-            </Link>
-          </Box>
-        </Box>
-        
-        <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
+          <Stack direction="row" spacing={1}>
+            <IconButton component="a" href="https://github.com/rohanmagar7" target="_blank" aria-label="GitHub">
+              <GitHub />
+            </IconButton>
+            <IconButton component="a" href="https://www.linkedin.com/in/rohanmagar7" target="_blank" aria-label="LinkedIn">
+              <LinkedIn />
+            </IconButton>
+            <IconButton component="a" href="mailto:rohanmagar.dev@gmail.com" aria-label="Email">
+              <Email />
+            </IconButton>
+          </Stack>
+        </Stack>
         
         <Typography 
-          variant="caption" 
+          variant="body2" 
           color="text.secondary" 
           align="center" 
-          display="block"
-          sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+          sx={{ mt: 2 }}
         >
-         <Link
-              href="https://www.linkedin.com/in/rohanmagar7"
-              color="inherit"
-              underline="none" 
-            >
-              <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Dev by Rohan Magar</Typography>
-            </Link></Typography>
+          Developed by <Link href="https://www.linkedin.com/in/rohanmagar7" target="_blank" color="primary" underline="hover">Rohan Magar</Link>
+        </Typography>
       </Container>
     </Box>
   );

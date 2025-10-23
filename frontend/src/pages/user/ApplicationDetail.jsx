@@ -21,6 +21,9 @@ import {
   DialogContent,
   DialogActions,
   Chip,
+  Stack,
+  styled,
+  Link,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -30,11 +33,35 @@ import {
   Download,
   CheckCircle,
   Payment,
+  Info,
+  Event,
+  Update,
+  AttachMoney,
+  Notes,
 } from '@mui/icons-material';
-import apiService from '../services/apiService';
+import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
+
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
+
+const DetailItem = ({ icon, primary, secondary }) => (
+    <Stack direction="row" spacing={2} alignItems="center">
+        <ListItemIcon sx={{ minWidth: 'auto' }}>{icon}</ListItemIcon>
+        <ListItemText primary={primary} secondary={secondary} />
+    </Stack>
+);
 
 const ApplicationDetail = () => {
   const { id } = useParams();
@@ -46,8 +73,12 @@ const ApplicationDetail = () => {
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  // Document Management
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedDocRequirement, setSelectedDocRequirement] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -55,24 +86,20 @@ const ApplicationDetail = () => {
   }, [id]);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const appRes = await apiService.getApplication(id);
-      setApplication(appRes.data);
-      
       const serviceRes = await apiService.getService(appRes.data.service);
+      setApplication(appRes.data);
       setService(serviceRes.data);
 
-      // Fetch payment information if application is approved
       if (appRes.data.status === 'Approved') {
         try {
           const paymentsRes = await apiService.getPayments();
-          const userPayment = paymentsRes.data.find(p => p.application === appRes.data.application_id);
+          const userPayment = paymentsRes.data.find(p => p.application === appRes.data.id);
           if (userPayment) {
             setPayment(userPayment);
-            
-            // Fetch active payment settings to get UPI ID and QR code
             const settingsRes = await apiService.getActivePaymentSettings();
-            console.log('Payment Settings Response:', settingsRes.data);
             setPaymentSettings(settingsRes.data);
           }
         } catch (err) {
@@ -87,40 +114,51 @@ const ApplicationDetail = () => {
     }
   };
 
+  const handleOpenUploadDialog = (doc) => {
+    setSelectedDocRequirement(doc);
+    setUploadDialogOpen(true);
+    setError('');
+    setSelectedFile(null);
+  };
+
+  const handleCloseUploadDialog = () => {
+    setUploadDialogOpen(false);
+    setSelectedDocRequirement(null);
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file
-      const maxSize = 250 * 1024; // 250KB
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      
+      const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        setError(`File size must be less than 250KB. Your file is ${(file.size / 1024).toFixed(2)}KB.`);
-        return;
+        setError(`File size must be less than 5MB. Your file is ${(file.size / (1024*1024)).toFixed(2)}MB.`);
+        setSelectedFile(null);
+      } else {
+        setError('');
+        setSelectedFile(file);
       }
-      
-      if (!allowedTypes.includes(file.type)) {
-        setError('Only PDF, JPEG, and PNG files are allowed');
-        return;
-      }
-      
-      setSelectedFile(file);
-      setError('');
     }
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-    
+  const handleUploadFile = async () => {
+    if (!selectedFile || !selectedDocRequirement) return;
     setUploading(true);
+    setError('');
+    setSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('document_name', selectedDocRequirement.name);
+    formData.append('application', application.id);
+    formData.append('required_document', selectedDocRequirement.id);
+
     try {
-      await apiService.uploadDocument(id, selectedFile);
-      setUploadDialogOpen(false);
-      setSelectedFile(null);
+      await apiService.uploadDocument(formData);
+      setSuccess('Document uploaded successfully!');
+      handleCloseUploadDialog();
       fetchData(); // Refresh data
-      setError('');
     } catch (err) {
-      setError('Failed to upload document');
+      setError('Failed to upload document.');
       console.error(err);
     } finally {
       setUploading(false);
@@ -130,416 +168,159 @@ const ApplicationDetail = () => {
   const handleDeleteDocument = async (docId) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
-        await apiService.deleteDocument(docId);
-        fetchData();
+        await apiService.deleteUserDocument(docId);
+        setSuccess('Document deleted successfully.');
+        fetchData(); // Refresh data
       } catch (err) {
-        setError('Failed to delete document');
+        setError('Failed to delete document.');
+        console.error(err);
       }
     }
   };
 
   if (loading) return <LoadingSpinner />;
-  if (!application) return <Alert severity="error">Application not found</Alert>;
+  if (error && !application) return <Container sx={{ py: 4 }}><Alert severity="error">{error}</Alert></Container>;
+
+  const requiredDocsMap = service ? new Map(service.required_documents.map(doc => [doc.id, doc.name])) : new Map();
+  const userDocsMap = application ? new Map(application.documents.map(doc => [doc.required_document, doc])) : new Map();
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Button
-        startIcon={<ArrowBack />}
-        onClick={() => navigate('/applications')}
-        sx={{ mb: 3 }}
-      >
-        Back to Applications
-      </Button>
+    <Container sx={{ py: 8 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(isAdmin ? '/admin/applications' : '/applications')}>
+          Back to Applications
+        </Button>
+        {application && <StatusBadge status={application.status} sx={{ fontSize: '1rem', py: 1, px: 2 }} />}
+      </Stack>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      {/* Application Header */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              {service?.service_name}
+      <Grid container spacing={4}>
+        {/* Left Column - Application Details */}
+        <Grid item xs={12} md={7} lg={8}>
+          <Paper sx={{ p: 3, borderRadius: 4 }}>
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              {service?.name || 'Application Details'}
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Application #{application.application_id}
-            </Typography>
-          </Box>
-          <StatusBadge status={application.status} />
-        </Box>
-      </Paper>
-
-      <Grid container spacing={3}>
-        {/* Application Details */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Application Details
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              
-              <List dense>
-                <ListItem>
-                  <ListItemText
-                    primary="Service"
-                    secondary={service?.service_name}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Status"
-                    secondary={<StatusBadge status={application.status} />}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Submitted On"
-                    secondary={new Date(application.submitted_at).toLocaleString()}
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="Last Updated"
-                    secondary={new Date(application.updated_at).toLocaleString()}
-                  />
-                </ListItem>
-                {application.reject_reason && (
-                  <ListItem>
-                    <ListItemText
-                      primary="Rejection Reason"
-                      secondary={application.reject_reason}
-                      secondaryTypographyProps={{ color: 'error' }}
-                    />
-                  </ListItem>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-
-          {/* Payment Details - Show when Approved */}
-          {application.status === 'Approved' && payment && (
-            <Card elevation={2} sx={{ mt: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Payment color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="h6">
-                    Payment Information
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  Your application has been approved! Please proceed with payment.
-                </Alert>
-
-                <List dense>
-                  <ListItem>
-                    <ListItemText
-                      primary="Amount to Pay"
-                      secondary={
-                        <Typography variant="h5" color="primary" fontWeight="bold">
-                          NPR {service?.price || '0'}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary="Payment Method"
-                      secondary={
-                        <Chip 
-                          label={payment.payment_method} 
-                          color="primary" 
-                          size="small"
-                          sx={{ mt: 0.5 }}
-                        />
-                      }
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary="Payment Status"
-                      secondary={
-                        <Chip 
-                          label={payment.payment_status}
-                          color={payment.payment_status === 'Completed' ? 'success' : 'warning'}
-                          size="small"
-                          sx={{ mt: 0.5 }}
-                        />
-                      }
-                    />
-                  </ListItem>
-                </List>
-
-                <Divider sx={{ my: 2 }} />
-
-                {/* Debug: Show if payment settings are loaded */}
-                {!paymentSettings && (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    Payment settings are being loaded...
-                  </Alert>
-                )}
-
-                {paymentSettings && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <Typography variant="body2" fontWeight="bold" gutterBottom>
-                      Available Payment Methods:
-                    </Typography>
-                    {paymentSettings.upi_id && (
-                      <Typography variant="body2">✓ UPI Payment Available</Typography>
-                    )}
-                    {paymentSettings.qr_code_url && (
-                      <Typography variant="body2">✓ QR Code Payment Available</Typography>
-                    )}
-                  </Alert>
-                )}
-
-                {/* Show UPI ID if available */}
-                {paymentSettings?.upi_id && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      UPI ID
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'grey.100',
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: '1.2rem',
-                        fontWeight: 'bold',
-                        color: 'primary.main'
-                      }}
-                    >
-                      {paymentSettings.upi_id}
-                    </Paper>
-                  </Box>
-                )}
-
-                {/* Show UPI Number if available */}
-                {paymentSettings?.upi_number && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      UPI Number
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'grey.100',
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: '1.2rem',
-                        fontWeight: 'bold',
-                        color: 'primary.main'
-                      }}
-                    >
-                      {paymentSettings.upi_number}
-                    </Paper>
-                  </Box>
-                )}
-
-                {/* Show QR Code if available */}
-                {paymentSettings?.qr_code_url && (
-                  <Box sx={{ mb: 2, textAlign: 'center' }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Scan QR Code to Pay
-                    </Typography>
-                    <Box
-                      component="img"
-                      src={paymentSettings.qr_code_url}
-                      alt="Payment QR Code"
-                      sx={{
-                        maxWidth: '300px',
-                        width: '100%',
-                        height: 'auto',
-                        mt: 2,
-                        border: '3px solid',
-                        borderColor: 'primary.main',
-                        borderRadius: 2,
-                        p: 2,
-                        bgcolor: 'white',
-                        boxShadow: 2
-                      }}
-                    />
-                  </Box>
-                )}
-
-                <Alert severity="info">
-                  <Typography variant="body2" fontWeight="bold" gutterBottom>
-                    Payment Instructions:
-                  </Typography>
-                  <Typography variant="body2">
-                    {payment.payment_method === 'Cash' && 
-                      'Please visit our office during business hours (10 AM - 5 PM) to complete your payment at the counter.'
-                    }
-                    {payment.payment_method === 'UPI' && 
-                      'Complete your payment using any UPI app. After payment, the admin will verify your transaction.'
-                    }
-                    {payment.payment_method === 'QR' && 
-                      'Scan the QR code using any UPI app to complete your payment. The admin will verify your transaction.'
-                    }
-                  </Typography>
-                </Alert>
-              </CardContent>
-            </Card>
-          )}
+            <Divider sx={{ my: 2 }} />
+            <List>
+                <ListItem><DetailItem icon={<Info color="primary"/>} primary="Service Name" secondary={service?.name} /></ListItem>
+                <ListItem><DetailItem icon={<Event color="primary"/>} primary="Submitted On" secondary={new Date(application.created_at).toLocaleString()} /></ListItem>
+                <ListItem><DetailItem icon={<Update color="primary"/>} primary="Last Updated" secondary={new Date(application.updated_at).toLocaleString()} /></ListItem>
+                <ListItem><DetailItem icon={<AttachMoney color="primary"/>} primary="Service Fee" secondary={`$${service?.price}`} /></ListItem>
+                {application.notes && <ListItem><DetailItem icon={<Notes color="primary"/>} primary="Your Notes" secondary={application.notes} /></ListItem>}
+            </List>
+          </Paper>
         </Grid>
 
-        {/* Documents */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={2}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Uploaded Documents
-                </Typography>
-                {application.status !== 'Completed' && (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<CloudUpload />}
-                    onClick={() => setUploadDialogOpen(true)}
-                  >
-                    Upload
-                  </Button>
-                )}
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              
-              {application.documents?.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
-                  No documents uploaded yet
-                </Typography>
-              ) : (
-                <List dense>
-                  {application.documents?.map((doc) => (
-                    <ListItem
-                      key={doc.document_id}
-                      secondaryAction={
-                        <>
-                          <IconButton
-                            edge="end"
-                            href={doc.file_url}
-                            target="_blank"
-                            sx={{ mr: 1 }}
-                          >
-                            <Download />
-                          </IconButton>
-                          {application.status === 'Pending' && (
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDeleteDocument(doc.document_id)}
-                              color="error"
-                            >
-                              <Delete />
-                            </IconButton>
-                          )}
-                        </>
-                      }
-                    >
-                      <ListItemIcon>
-                        <Description />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={doc.document_name || `Document #${doc.document_id}`}
-                        secondary={new Date(doc.uploaded_at).toLocaleDateString()}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
+        {/* Right Column - Payment & Status */}
+        <Grid item xs={12} md={5} lg={4}>
+            <Paper sx={{ p: 3, borderRadius: 4 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>Status & Payment</Typography>
+                <Divider sx={{ my: 2 }} />
+                <Stack spacing={2}>
+                    <Chip icon={<Payment />} label={`Payment Method: ${application.payment_method}`} />
+                    {payment && <Chip icon={<CheckCircle />} label={`Payment Status: ${payment.status}`} color={payment.status === 'Paid' ? 'success' : 'warning'} />}
+                    
+                    {application.status === 'Approved' && !payment && (
+                        <Alert severity="info">
+                            Your application is approved. Payment details will be available here shortly.
+                        </Alert>
+                    )}
 
-          {/* Final Documents */}
-          {application.final_document?.length > 0 && (
-            <Card elevation={2} sx={{ mt: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CheckCircle color="success" sx={{ mr: 1 }} />
-                  <Typography variant="h6">
-                    Final Documents
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                
-                <List dense>
-                  {application.final_document.map((doc) => (
-                    <ListItem
-                      key={doc.final_doc_id}
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          href={doc.file_url}
-                          target="_blank"
-                        >
-                          <Download />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemIcon>
-                        <Description color="success" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`Final Document #${doc.final_doc_id}`}
-                        secondary={new Date(doc.uploaded_at).toLocaleDateString()}
-                      />
-                    </ListItem>
-                  ))}
+                    {payment && paymentSettings && payment.status !== 'Paid' && (
+                        <Card variant="outlined">
+                            <CardContent>
+                                <Typography variant="subtitle1" fontWeight="bold">Complete Your Payment</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
+                                    To finalize your application, please complete the payment of ${payment.amount}.
+                                </Typography>
+                                {paymentSettings.upi_id && <Typography><b>UPI ID:</b> {paymentSettings.upi_id}</Typography>}
+                                {paymentSettings.qr_code_url && (
+                                    <Box mt={2} textAlign="center">
+                                        <img src={paymentSettings.qr_code_url} alt="UPI QR Code" style={{ maxWidth: '150px', borderRadius: '8px' }} />
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </Stack>
+            </Paper>
+        </Grid>
+
+        {/* Documents Section */}
+        <Grid item xs={12}>
+            <Paper sx={{ p: 3, borderRadius: 4 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Required Documents
+                </Typography>
+                <List>
+                    {Array.from(requiredDocsMap.entries()).map(([reqId, reqName]) => {
+                        const userDoc = userDocsMap.get(reqId);
+                        return (
+                            <ListItem key={reqId} divider secondaryAction={
+                                <Stack direction="row" spacing={1}>
+                                    {userDoc ? (
+                                        <>
+                                            <IconButton href={userDoc.file_url} target="_blank" rel="noopener noreferrer" edge="end" aria-label="download" color="primary">
+                                                <Download />
+                                            </IconButton>
+                                            {application.status === 'Pending' && (
+                                                <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteDocument(userDoc.id)} color="error">
+                                                    <Delete />
+                                                </IconButton>
+                                            )}
+                                        </>
+                                    ) : (
+                                        application.status === 'Pending' && (
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<CloudUpload />}
+                                                onClick={() => handleOpenUploadDialog({ id: reqId, name: reqName })}
+                                            >
+                                                Upload
+                                            </Button>
+                                        )
+                                    )}
+                                </Stack>
+                            }>
+                                <ListItemIcon>
+                                    {userDoc ? <CheckCircle color="success" /> : <Info color="warning" />}
+                                </ListItemIcon>
+                                <ListItemText 
+                                    primary={reqName} 
+                                    secondary={userDoc ? `Uploaded: ${new Date(userDoc.uploaded_at).toLocaleDateString()}` : 'Pending upload'} 
+                                />
+                            </ListItem>
+                        );
+                    })}
                 </List>
-              </CardContent>
-            </Card>
-          )}
+            </Paper>
         </Grid>
       </Grid>
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Upload Document</DialogTitle>
+      <Dialog open={uploadDialogOpen} onClose={handleCloseUploadDialog}>
+        <DialogTitle>Upload: {selectedDocRequirement?.name}</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <input
-              accept=".pdf,.jpg,.jpeg,.png"
-              style={{ display: 'none' }}
-              id="file-upload"
-              type="file"
-              onChange={handleFileSelect}
-            />
-            <label htmlFor="file-upload">
-              <Button
-                variant="outlined"
-                component="span"
-                fullWidth
-                startIcon={<CloudUpload />}
-              >
-                Choose File
-              </Button>
-            </label>
-            
-            {selectedFile && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
-              </Alert>
-            )}
-            
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
-              Accepted: PDF, JPEG, PNG (Max 250KB)
-            </Typography>
-          </Box>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <Button
+            component="label"
+            role={undefined}
+            variant="contained"
+            tabIndex={-1}
+            startIcon={<CloudUpload />}
+            fullWidth
+          >
+            {selectedFile ? `Selected: ${selectedFile.name}` : 'Choose File'}
+            <VisuallyHiddenInput type="file" onChange={handleFileSelect} />
+          </Button>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpload}
-            disabled={!selectedFile || uploading}
-          >
+          <Button onClick={handleCloseUploadDialog}>Cancel</Button>
+          <Button onClick={handleUploadFile} disabled={!selectedFile || uploading}>
             {uploading ? 'Uploading...' : 'Upload'}
           </Button>
         </DialogActions>

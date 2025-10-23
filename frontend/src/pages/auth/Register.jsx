@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
+  Box,
   Paper,
   Typography,
   TextField,
@@ -10,8 +11,9 @@ import {
   Alert,
   InputAdornment,
   IconButton,
-  Grid,
-  Box,
+  Stack,
+  Divider,
+  Avatar,
 } from '@mui/material';
 import { Visibility, VisibilityOff, PersonAdd } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
@@ -19,15 +21,14 @@ import { useAuth } from '../../context/AuthContext';
 const Register = () => {
   const [formData, setFormData] = useState({
     username: '',
-    password: '',
-    full_name: '',
     email: '',
+    full_name: '',
     phone_number: '',
-    role: 'user',
+    password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const { register } = useAuth();
@@ -40,231 +41,162 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     setError('');
 
-    // Basic validation
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.phone_number.length < 10) {
-      setError('Please enter a valid phone number');
-      setLoading(false);
-      return;
-    }
-
     try {
-      await register(formData);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+      });
+      navigate('/login');
     } catch (err) {
-      const errorMsg = err.response?.data?.username?.[0] || 
-                       err.response?.data?.detail ||
-                       'Registration failed. Please try again.';
-      setError(errorMsg);
+      const errorData = err.response?.data;
+      if (errorData) {
+        const errorMessages = Object.values(errorData).flat().join(' ');
+        setError(errorMessages || 'Registration failed.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 } }}>
+    <Container component="main" maxWidth="xs">
       <Box
         sx={{
-          minHeight: { xs: 'calc(100vh - 120px)', sm: '80vh' },
+          marginTop: 8,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          py: { xs: 3, sm: 4 },
         }}
       >
-        <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: '100%', maxWidth: 700 }}>
-          <Box sx={{ mb: { xs: 2, sm: 3 }, textAlign: 'center' }}>
-            <PersonAdd sx={{ fontSize: { xs: 40, sm: 48 }, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-              Create Account
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              Fill in your details to get started
-            </Typography>
-          </Box>
+        <Paper 
+          sx={{ 
+            p: 4, 
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
+            <PersonAdd />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Create Account
+          </Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
+            Join us! Please fill in the details to get started.
+          </Typography>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert severity="success" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              Registration successful! Redirecting to login...
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                  autoFocus
-                  helperText="Choose a unique username"
-                  size="medium"
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiInputLabel-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiFormHelperText-root': {
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  name="full_name"
-                  value={formData.full_name}
-                  onChange={handleChange}
-                  required
-                  size="medium"
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiInputLabel-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  helperText="Optional"
-                  size="medium"
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiInputLabel-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiFormHelperText-root': {
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  name="phone_number"
-                  value={formData.phone_number}
-                  onChange={handleChange}
-                  required
-                  helperText="10 digits"
-                  size="medium"
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiInputLabel-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiFormHelperText-root': {
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  helperText="Minimum 6 characters"
-                  size="medium"
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiInputLabel-root': {
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
-                    },
-                    '& .MuiFormHelperText-root': {
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    },
-                  }}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          size={window.innerWidth < 600 ? 'small' : 'medium'}
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-            </Grid>
-
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+                {error}
+              </Alert>
+            )}
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                label="Username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                autoFocus
+                autoComplete="username"
+              />
+              <TextField
+                fullWidth
+                label="Full Name"
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleChange}
+                required
+                autoComplete="name"
+              />
+              <TextField
+                fullWidth
+                label="Phone Number"
+                name="phone_number"
+                value={formData.phone_number}
+                onChange={handleChange}
+                required
+                autoComplete="tel"
+              />
+              <TextField
+                fullWidth
+                label="Email Address"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                autoComplete="email"
+              />
+              <TextField
+                fullWidth
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                required
+                autoComplete="new-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                fullWidth
+                name="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                autoComplete="new-password"
+              />
+            </Stack>
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              size="large"
-              disabled={loading || success}
-              sx={{ 
-                mt: { xs: 2, sm: 3 }, 
-                mb: 2, 
-                py: { xs: 1.2, sm: 1.5 },
-                fontSize: { xs: '0.95rem', sm: '1.05rem' },
-              }}
+              disabled={loading}
+              sx={{ mt: 3, mb: 2 }}
             >
-              {loading ? 'Creating Account...' : 'Register'}
+              {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
-
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                Already have an account?{' '}
-                <Link component={RouterLink} to="/login" underline="hover">
-                  Login here
-                </Link>
-              </Typography>
-            </Box>
-          </form>
+            <Divider sx={{ my: 2 }}>
+              <Typography variant="caption">OR</Typography>
+            </Divider>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Already have an account?{' '}
+              <Link component={RouterLink} to="/login" variant="body2" color="primary">
+                Sign In
+              </Link>
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Container>

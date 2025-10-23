@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 
 # Register your models here.
 admin.site.register(User)
@@ -59,3 +59,16 @@ class PaymentSettingsAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Don't allow deletion of payment settings
         return False
+
+@admin.register(GovScheme)
+class GovSchemeAdmin(admin.ModelAdmin):
+    list_display = ['scheme_id', 'name', 'category', 'is_active', 'created_at', 'created_by']
+    list_filter = ['category', 'is_active', 'created_at']
+    search_fields = ['name', 'description', 'eligibility', 'benefits']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at', 'updated_at', 'created_by']
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # If creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

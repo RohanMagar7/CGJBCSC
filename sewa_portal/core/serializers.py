@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -163,3 +163,30 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         model = Announcement
         fields = ['id', 'title', 'content', 'type', 'is_active', 'created_at', 'updated_at', 'created_by']
         read_only_fields = ['created_at', 'updated_at', 'created_by']
+
+class GovSchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GovScheme
+        fields = ['scheme_id', 'name', 'category', 'description', 'eligibility', 'benefits', 
+                  'documents', 'how_to_apply', 'official_website', 'is_active', 
+                  'created_at', 'updated_at', 'created_by']
+        read_only_fields = ['scheme_id', 'created_at', 'updated_at', 'created_by']
+    
+    def to_representation(self, instance):
+        """Customize the output representation"""
+        representation = super().to_representation(instance)
+        # Add 'id' field for frontend compatibility
+        representation['id'] = instance.scheme_id
+        # Rename fields to match frontend expectations
+        representation['howToApply'] = representation.pop('how_to_apply')
+        representation['officialWebsite'] = representation.pop('official_website')
+        return representation
+    
+    def to_internal_value(self, data):
+        """Handle incoming data from frontend"""
+        # Convert frontend field names to backend field names
+        if 'howToApply' in data:
+            data['how_to_apply'] = data.pop('howToApply')
+        if 'officialWebsite' in data:
+            data['official_website'] = data.pop('officialWebsite')
+        return super().to_internal_value(data)

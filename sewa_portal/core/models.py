@@ -304,3 +304,44 @@ class Announcement(models.Model):
     
     def __str__(self):
         return self.title
+
+# -------------------------
+# Government Scheme Model
+# -------------------------
+class GovScheme(models.Model):
+    CATEGORY_CHOICES = (
+        ('Education', 'Education'),
+        ('Health', 'Health'),
+        ('Agriculture', 'Agriculture'),
+        ('Employment', 'Employment'),
+        ('Housing', 'Housing'),
+        ('Business', 'Business'),
+        ('Social Welfare', 'Social Welfare'),
+    )
+    
+    scheme_id = models.AutoField(primary_key=True, editable=False)
+    name = models.CharField(max_length=200, db_index=True, help_text="Name of the government scheme")
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, db_index=True, help_text="Category of the scheme")
+    description = models.TextField(help_text="Detailed description of the scheme")
+    eligibility = models.TextField(help_text="Eligibility criteria for the scheme")
+    benefits = models.TextField(help_text="Benefits provided by the scheme")
+    documents = models.JSONField(default=list, blank=True, help_text="List of required documents (JSON array)")
+    how_to_apply = models.JSONField(default=list, blank=True, help_text="Steps to apply for the scheme (JSON array)")
+    official_website = models.URLField(max_length=500, blank=True, null=True, help_text="Official website URL")
+    is_active = models.BooleanField(default=True, db_index=True, help_text="Whether the scheme is currently active")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Government Scheme"
+        verbose_name_plural = "Government Schemes"
+        indexes = [
+            models.Index(fields=['is_active', '-created_at']),  # Composite index for active schemes
+            models.Index(fields=['category', 'is_active']),  # Composite index for category filtering
+            models.Index(fields=['name']),  # Index for name searches
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.category})"

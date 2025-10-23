@@ -11,6 +11,9 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  Stack,
+  Divider,
+  Avatar,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
@@ -36,7 +39,6 @@ const Login = () => {
 
     try {
       const user = await login(formData.username, formData.password);
-      // Redirect based on user role
       if (user.role === 'Admin') {
         navigate('/admin');
       } else {
@@ -50,114 +52,94 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ px: { xs: 2, sm: 3 } }}>
+    <Container component="main" maxWidth="xs">
       <Box
         sx={{
-          minHeight: { xs: 'calc(100vh - 120px)', sm: '80vh' },
+          marginTop: 8,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          py: { xs: 3, sm: 4 },
         }}
       >
-        <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: '100%', maxWidth: 500 }}>
-          <Box sx={{ mb: { xs: 2, sm: 3 }, textAlign: 'center' }}>
-            <LoginIcon sx={{ fontSize: { xs: 40, sm: 48 }, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-              Welcome Back
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              Sign in to access your account
-            </Typography>
-          </Box>
+        <Paper 
+          sx={{ 
+            p: 4, 
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+            <LoginIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign In
+          </Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
+            Welcome back! Please enter your details.
+          </Typography>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              {error}
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              margin="normal"
-              required
-              autoFocus
-              autoComplete="username"
-              size="medium"
-              sx={{
-                '& .MuiInputBase-root': {
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                },
-                '& .MuiInputLabel-root': {
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                },
-              }}
-            />
-
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleChange}
-              margin="normal"
-              required
-              autoComplete="current-password"
-              size="medium"
-              sx={{
-                '& .MuiInputBase-root': {
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                },
-                '& .MuiInputLabel-root': {
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                },
-              }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                      size={window.innerWidth < 600 ? 'small' : 'medium'}
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+                {error}
+              </Alert>
+            )}
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                label="Username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                autoFocus
+                autoComplete="username"
+              />
+              <TextField
+                fullWidth
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                required
+                autoComplete="current-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Stack>
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              size="large"
               disabled={loading}
-              sx={{ 
-                mt: { xs: 2, sm: 3 }, 
-                mb: 2, 
-                py: { xs: 1.2, sm: 1.5 },
-                fontSize: { xs: '0.95rem', sm: '1.05rem' },
-              }}
+              sx={{ mt: 3, mb: 2 }}
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
-
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                Don't have an account?{' '}
-                <Link component={RouterLink} to="/register" underline="hover">
-                  Register here
-                </Link>
-              </Typography>
-            </Box>
-          </form>
+            <Divider sx={{ my: 2 }}>
+              <Typography variant="caption">OR</Typography>
+            </Divider>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Don't have an account?{' '}
+              <Link component={RouterLink} to="/register" variant="body2" color="primary">
+                Sign Up
+              </Link>
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Container>

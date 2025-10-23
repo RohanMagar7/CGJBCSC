@@ -21,9 +21,10 @@ import {
   Chip,
   Alert,
   IconButton,
-  Avatar,
-  Divider,
-  alpha,
+  Stack,
+  Switch,
+  FormControlLabel,
+  DialogContentText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,26 +32,138 @@ import {
   Delete as DeleteIcon,
   Campaign as CampaignIcon,
   Close as CloseIcon,
-  Save as SaveIcon,
-  Announcement as AnnouncementIcon,
 } from '@mui/icons-material';
-import apiService from '../services/apiService';
+import apiService from '../../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+
+const AnnouncementCard = ({ announcement, onEdit, onDelete }) => {
+    const getChipColor = (type) => {
+        switch(type) {
+            case 'info': return 'info';
+            case 'warning': return 'warning';
+            case 'alert': return 'error';
+            default: return 'default';
+        }
+    };
+
+    return (
+        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flexGrow: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                    <Box>
+                        <Typography variant="h6" component="h3" fontWeight="bold" gutterBottom>
+                            {announcement.title}
+                        </Typography>
+                    </Box>
+                    <Chip label={announcement.is_active ? 'Active' : 'Inactive'} color={announcement.is_active ? 'success' : 'default'} size="small" />
+                </Stack>
+                <Chip label={announcement.type} color={getChipColor(announcement.type)} size="small" sx={{ mb: 1 }} />
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {announcement.content}
+                </Typography>
+            </CardContent>
+            <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                <Button size="small" startIcon={<EditIcon />} onClick={() => onEdit(announcement)}>Edit</Button>
+                <Button size="small" startIcon={<DeleteIcon />} color="error" onClick={() => onDelete(announcement)}>Delete</Button>
+            </CardActions>
+        </Card>
+    );
+};
+
+const AnnouncementDialog = ({ open, onClose, announcement, onSave, formErrors }) => {
+    const [formData, setFormData] = useState({
+        title: '',
+        content: '',
+        type: 'info',
+        is_active: true,
+    });
+
+    useEffect(() => {
+        if (announcement) {
+            setFormData({
+                title: announcement.title,
+                content: announcement.content,
+                type: announcement.type,
+                is_active: announcement.is_active,
+            });
+        } else {
+            setFormData({ title: '', content: '', type: 'info', is_active: true });
+        }
+    }, [announcement, open]);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+    };
+
+    const handleSave = () => {
+        onSave(formData);
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+            <DialogTitle>{announcement ? 'Edit Announcement' : 'Create New Announcement'}</DialogTitle>
+            <DialogContent>
+                <Stack spacing={3} sx={{ pt: 1 }}>
+                    <TextField
+                        name="title"
+                        label="Title"
+                        fullWidth
+                        value={formData.title}
+                        onChange={handleChange}
+                        error={!!formErrors.title}
+                        helperText={formErrors.title}
+                    />
+                    <TextField
+                        name="content"
+                        label="Content"
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={formData.content}
+                        onChange={handleChange}
+                        error={!!formErrors.content}
+                        helperText={formErrors.content}
+                    />
+                    <FormControl fullWidth error={!!formErrors.type}>
+                        <InputLabel>Type</InputLabel>
+                        <Select
+                            name="type"
+                            label="Type"
+                            value={formData.type}
+                            onChange={handleChange}
+                        >
+                            <MenuItem value="info">Info</MenuItem>
+                            <MenuItem value="warning">Warning</MenuItem>
+                            <MenuItem value="alert">Alert</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <FormControlLabel
+                        control={<Switch name="is_active" checked={formData.is_active} onChange={handleChange} />}
+                        label="Active"
+                    />
+                </Stack>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSave} variant="contained">Save</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 export default function AdminAnnouncements() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    type: 'info',
-    is_active: true,
-  });
   const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
@@ -61,8 +174,7 @@ export default function AdminAnnouncements() {
     try {
       setLoading(true);
       const response = await apiService.getAnnouncements();
-      setAnnouncements(response.data || response);
-      setError('');
+      setAnnouncements(response.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) || []);
     } catch (err) {
       setError('Failed to fetch announcements');
       console.error(err);
@@ -72,23 +184,7 @@ export default function AdminAnnouncements() {
   };
 
   const handleOpenDialog = (announcement = null) => {
-    if (announcement) {
-      setSelectedAnnouncement(announcement);
-      setFormData({
-        title: announcement.title,
-        content: announcement.content,
-        type: announcement.type,
-        is_active: announcement.is_active !== false,
-      });
-    } else {
-      setSelectedAnnouncement(null);
-      setFormData({
-        title: '',
-        content: '',
-        type: 'info',
-        is_active: true,
-      });
-    }
+    setSelectedAnnouncement(announcement);
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -96,420 +192,133 @@ export default function AdminAnnouncements() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedAnnouncement(null);
-    setFormData({
-      title: '',
-      content: '',
-      type: 'info',
-      is_active: true,
-    });
-    setFormErrors({});
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'is_active' ? checked : value,
-    }));
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
+  const validateForm = (data) => {
     const errors = {};
-    if (!formData.title.trim()) {
-      errors.title = 'Title is required';
-    }
-    if (!formData.content.trim()) {
-      errors.content = 'Content is required';
-    }
-    if (!formData.type) {
-      errors.type = 'Type is required';
-    }
+    if (!data.title.trim()) errors.title = 'Title is required.';
+    if (!data.content.trim()) errors.content = 'Content is required.';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  const handleSave = async (formData) => {
+    if (!validateForm(formData)) return;
+
+    const apiCall = selectedAnnouncement
+      ? apiService.updateAnnouncement(selectedAnnouncement.id, formData)
+      : apiService.createAnnouncement(formData);
 
     try {
-      if (selectedAnnouncement) {
-        await apiService.updateAnnouncement(selectedAnnouncement.id, formData);
-        setSuccess('Announcement updated successfully!');
-      } else {
-        await apiService.createAnnouncement(formData);
-        setSuccess('Announcement created successfully!');
-      }
-      handleCloseDialog();
+      await apiCall;
+      setSuccess(`Announcement ${selectedAnnouncement ? 'updated' : 'created'} successfully.`);
       fetchAnnouncements();
-      setTimeout(() => setSuccess(''), 3000);
+      handleCloseDialog();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save announcement');
+      setError(`Failed to ${selectedAnnouncement ? 'update' : 'create'} announcement.`);
       console.error(err);
     }
   };
 
-  const handleDeleteClick = (announcement) => {
+  const handleOpenDeleteDialog = (announcement) => {
     setSelectedAnnouncement(announcement);
     setDeleteDialogOpen(true);
   };
 
-  const handleDelete = async () => {
-    try {
-      await apiService.deleteAnnouncement(selectedAnnouncement.id);
-      setSuccess('Announcement deleted successfully!');
-      setDeleteDialogOpen(false);
-      setSelectedAnnouncement(null);
-      fetchAnnouncements();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Failed to delete announcement');
-      console.error(err);
-    }
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setSelectedAnnouncement(null);
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'success':
-        return 'success';
-      case 'warning':
-        return 'warning';
-      case 'error':
-        return 'error';
-      default:
-        return 'info';
+  const handleDelete = async () => {
+    if (!selectedAnnouncement) return;
+    try {
+      await apiService.deleteAnnouncement(selectedAnnouncement.id);
+      setSuccess('Announcement deleted successfully.');
+      fetchAnnouncements();
+      handleCloseDeleteDialog();
+    } catch (err) {
+      setError('Failed to delete announcement.');
+      console.error(err);
     }
   };
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Hero Header */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, sm: 3, md: 4 },
-            mb: 4,
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            color: 'white',
-            borderRadius: 3,
-          }}
+    <Container sx={{ py: 8 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        spacing={{ xs: 2, sm: 1 }}
+        mb={4}
+      >
+        <Box>
+          <Typography variant="h4" component="h1" fontWeight="bold">
+            Manage Announcements
+          </Typography>
+          <Typography color="text.secondary">
+            Create, edit, and manage portal-wide announcements.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenDialog()}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: { xs: 'column', md: 'row' },
-            justifyContent: 'space-between', 
-            alignItems: { xs: 'flex-start', md: 'center' },
-            gap: 2
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 } }}>
-                <CampaignIcon sx={{ fontSize: { xs: 28, md: 32 } }} />
-              </Avatar>
-              <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
-                  Manage Announcements
-                </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9, fontSize: { xs: '0.875rem', md: '1rem' } }}>
-                  Create and manage public announcements
-                </Typography>
-              </Box>
-            </Box>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{
-                bgcolor: 'white',
-                color: 'primary.main',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                fontWeight: 'bold',
-                px: { xs: 2, md: 3 },
-                py: { xs: 1, md: 1.5 },
-                fontSize: { xs: '0.875rem', md: '1rem' },
-                width: { xs: '100%', sm: 'auto' },
-                minWidth: { sm: 200 },
-              }}
-            >
-              New Announcement
-            </Button>
-          </Box>
-        </Paper>
+          New Announcement
+        </Button>
+      </Stack>
 
-        {/* Alerts */}
-        {error && (
-          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3, borderRadius: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {success && (
-          <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 3, borderRadius: 2 }}>
-            {success}
-          </Alert>
-        )}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
-        {/* Announcements Grid */}
-        {announcements.length === 0 ? (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 8,
-              textAlign: 'center',
-              borderRadius: 3,
-              border: '2px dashed',
-              borderColor: 'divider',
-            }}
-          >
-            <Avatar
-              sx={{
-                width: 80,
-                height: 80,
-                bgcolor: alpha('#f093fb', 0.1),
-                color: 'secondary.main',
-                margin: '0 auto',
-                mb: 2,
-              }}
-            >
-              <AnnouncementIcon sx={{ fontSize: 40 }} />
-            </Avatar>
-            <Typography variant="h6" gutterBottom>
-              No Announcements Yet
-            </Typography>
-            <Typography variant="body1" color="text.secondary" gutterBottom>
-              Create your first announcement to inform users
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{ mt: 2 }}
-            >
-              Create Announcement
-            </Button>
-          </Paper>
+      <Grid container spacing={4}>
+        {announcements.length > 0 ? (
+          announcements.map((announcement) => (
+            <Grid item key={announcement.id} xs={12} sm={6} md={4}>
+              <AnnouncementCard 
+                announcement={announcement} 
+                onEdit={handleOpenDialog}
+                onDelete={handleOpenDeleteDialog}
+              />
+            </Grid>
+          ))
         ) : (
-          <Grid container spacing={3}>
-            {announcements.map((announcement) => (
-              <Grid item xs={12} md={6} lg={4} key={announcement.id}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 16px rgba(240, 147, 251, 0.2)',
-                      borderColor: 'secondary.main',
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Chip
-                        label={announcement.type.toUpperCase()}
-                        size="small"
-                        color={getTypeColor(announcement.type)}
-                      />
-                      <Chip
-                        label={announcement.is_active !== false ? 'Active' : 'Inactive'}
-                        size="small"
-                        color={announcement.is_active !== false ? 'success' : 'default'}
-                        variant="outlined"
-                      />
-                    </Box>
-                    <Typography variant="h6" fontWeight="bold" gutterBottom>
-                      {announcement.title}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{
-                        mb: 2,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {announcement.content}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(announcement.created_at || announcement.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </Typography>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ p: 2, justifyContent: 'space-between' }}>
-                    <Button
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={() => handleOpenDialog(announcement)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={() => handleDeleteClick(announcement)}
-                    >
-                      Delete
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
+          <Grid item xs={12}>
+            <Paper sx={{ textAlign: 'center', p: 4 }}>
+              <CampaignIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+              <Typography variant="h6" mt={2}>No Announcements Found</Typography>
+              <Typography color="text.secondary">
+                Click "New Announcement" to create one.
+              </Typography>
+            </Paper>
           </Grid>
         )}
+      </Grid>
 
-        {/* Create/Edit Dialog */}
-        <Dialog
-          open={dialogOpen}
-          onClose={handleCloseDialog}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ sx: { borderRadius: 3 } }}
-        >
-          <DialogTitle>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Avatar sx={{ bgcolor: alpha('#f093fb', 0.1), color: 'secondary.main' }}>
-                  {selectedAnnouncement ? <EditIcon /> : <AddIcon />}
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  {selectedAnnouncement ? 'Edit Announcement' : 'Create Announcement'}
-                </Typography>
-              </Box>
-              <IconButton onClick={handleCloseDialog} size="small">
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          <Divider />
-          <DialogContent sx={{ pt: 3 }}>
-            <TextField
-              fullWidth
-              label="Title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              margin="normal"
-              required
-              error={!!formErrors.title}
-              helperText={formErrors.title}
-            />
-            <TextField
-              fullWidth
-              label="Content"
-              name="content"
-              value={formData.content}
-              onChange={handleInputChange}
-              margin="normal"
-              required
-              multiline
-              rows={4}
-              error={!!formErrors.content}
-              helperText={formErrors.content}
-            />
-            <FormControl fullWidth margin="normal" required error={!!formErrors.type}>
-              <InputLabel>Type</InputLabel>
-              <Select name="type" value={formData.type} label="Type" onChange={handleInputChange}>
-                <MenuItem value="info">Info</MenuItem>
-                <MenuItem value="success">Success</MenuItem>
-                <MenuItem value="warning">Warning</MenuItem>
-                <MenuItem value="error">Error</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Status</InputLabel>
-              <Select
-                name="is_active"
-                value={formData.is_active}
-                label="Status"
-                onChange={handleInputChange}
-              >
-                <MenuItem value={true}>Active</MenuItem>
-                <MenuItem value={false}>Inactive</MenuItem>
-              </Select>
-            </FormControl>
-          </DialogContent>
-          <Divider />
-          <DialogActions sx={{ p: 2.5, gap: 1 }}>
-            <Button onClick={handleCloseDialog} variant="outlined" sx={{ borderRadius: 2 }}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              variant="contained"
-              startIcon={<SaveIcon />}
-              sx={{ borderRadius: 2 }}
-            >
-              {selectedAnnouncement ? 'Update' : 'Create'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+      <AnnouncementDialog 
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        announcement={selectedAnnouncement}
+        onSave={handleSave}
+        formErrors={formErrors}
+      />
 
-        {/* Delete Dialog */}
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          maxWidth="xs"
-          fullWidth
-          PaperProps={{ sx: { borderRadius: 3 } }}
-        >
-          <DialogTitle>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ bgcolor: alpha('#f44336', 0.1), color: 'error.main' }}>
-                <DeleteIcon />
-              </Avatar>
-              <Typography variant="h6" fontWeight="bold">
-                Delete Announcement
-              </Typography>
-            </Box>
-          </DialogTitle>
-          <Divider />
-          <DialogContent sx={{ pt: 3 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              This action cannot be undone!
-            </Alert>
-            {selectedAnnouncement && (
-              <Typography variant="body1">
-                Are you sure you want to delete <strong>"{selectedAnnouncement.title}"</strong>?
-              </Typography>
-            )}
-          </DialogContent>
-          <Divider />
-          <DialogActions sx={{ p: 2.5, gap: 1 }}>
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDelete}
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              sx={{ borderRadius: 2 }}
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Container>
-    </Box>
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the announcement: "{selectedAnnouncement?.title}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+          <Button onClick={handleDelete} color="error">Delete</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 }

@@ -10,10 +10,10 @@ import logging
 logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.db import models
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
-                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer)
+                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer, GovSchemeSerializer)
 from .permissions import IsAdminUser, IsOwnerOrAdmin
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -242,6 +242,27 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated and hasattr(self.request.user, 'role') and self.request.user.role == 'admin':
             return Announcement.objects.select_related('created_by').all()
         return Announcement.objects.filter(is_active=True).select_related('created_by')
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class GovSchemeViewSet(viewsets.ModelViewSet):
+    queryset = GovScheme.objects.select_related('created_by').all()
+    serializer_class = GovSchemeSerializer
+    
+    def get_permissions(self):
+        # Allow anyone to view government schemes (GET)
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        # Only admins can create, update, delete
+        return [permissions.IsAuthenticated(), IsAdminUser()]
+    
+    def get_queryset(self):
+        # Public users only see active schemes
+        if self.request.user.is_authenticated and hasattr(self.request.user, 'role') and self.request.user.role == 'admin':
+            return GovScheme.objects.select_related('created_by').all()
+        return GovScheme.objects.filter(is_active=True).select_related('created_by')
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
