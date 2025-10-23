@@ -102,6 +102,33 @@ class UserApplicationViewSet(viewsets.ModelViewSet):
         context.update({"request": self.request})
         return context
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete an application. Users can delete their own applications, admins can delete any.
+        Related documents and payments will be cascade deleted automatically.
+        """
+        application = self.get_object()
+        app_id = application.application_id
+        service_name = application.service.service_name
+        user_name = application.user.username
+        
+        # Log the deletion
+        logger.info(
+            "Application deletion: app_id=%s, service=%s, user=%s, deleted_by=%s (role=%s)",
+            app_id, service_name, user_name, request.user.username, request.user.role
+        )
+        
+        # Perform deletion (CASCADE will handle related documents and payments)
+        self.perform_destroy(application)
+        
+        return Response(
+            {
+                'success': True,
+                'message': f'Application #{app_id} for {service_name} has been deleted successfully.'
+            },
+            status=200
+        )
+
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def update_status(self, request, pk=None):
         app = self.get_object()
@@ -312,13 +339,62 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), IsAdminUser()]
     
     def get_queryset(self):
-        # Only return active payment settings
+        user = self.request.user
+        # Admin can see all payment settings
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'admin':
+            return PaymentSettings.objects.all()
+        # Public users only see active payment settings
         return PaymentSettings.objects.filter(is_active=True)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
+    
+    def create(self, request, *args, **kwargs):
+        """Create new payment settings"""
+        logger.info("Creating payment settings by admin: %s", request.user.username)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """Update payment settings (including QR code)"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        logger.info(
+            "Updating payment settings ID=%s by admin: %s",
+            instance.settings_id, request.user.username
+        )
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        return Response(serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete payment settings"""
+        instance = self.get_object()
+        settings_id = instance.settings_id
+        
+        logger.info(
+            "Deleting payment settings ID=%s by admin: %s",
+            settings_id, request.user.username
+        )
+        
+        self.perform_destroy(instance)
+        
+        return Response(
+            {
+                'success': True,
+                'message': f'Payment settings #{settings_id} deleted successfully.'
+            },
+            status=200
+        )
     
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny()])
     def active(self, request):
