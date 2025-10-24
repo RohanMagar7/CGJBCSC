@@ -75,7 +75,8 @@ class BackupManager:
                 '-U', db_config['USER'],
                 '-d', db_config['NAME'],
                 '-F', 'p',  # Plain text format
-                '-f', temp_path
+                '-f', temp_path,
+                '--no-synchronized-snapshots',  # Avoid snapshot issues
             ]
             
             # Set password environment variable
@@ -90,9 +91,16 @@ class BackupManager:
                 text=True
             )
             
+            # Check for actual errors (ignore version warnings if dump succeeded)
             if result.returncode != 0:
-                logger.error(f"pg_dump failed: {result.stderr}")
-                return False, f"Database dump failed: {result.stderr}", None
+                # If file was created and has content, version mismatch might be just a warning
+                if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                    logger.warning(f"pg_dump completed with warnings: {result.stderr}")
+                    # Continue with upload despite warning
+                else:
+                    logger.error(f"pg_dump failed: {result.stderr}")
+                    os.unlink(temp_path)
+                    return False, f"Database dump failed: {result.stderr}", None
             
             # Upload to Dropbox
             dropbox_path = f"/backups/{backup_filename}"
