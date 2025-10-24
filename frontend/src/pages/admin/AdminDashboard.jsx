@@ -94,18 +94,32 @@ const AdminDashboard = () => {
           severity: 'success',
         });
       } else {
+        // Check if it's a development environment error
+        const isDevelopmentError = response.data.message?.includes('DATABASE_URL not set') || 
+                                   response.data.message?.includes('Production database not configured');
+        
         setSnackbar({
           open: true,
-          message: response.data.message || 'Failed to create backup',
-          severity: 'error',
+          message: isDevelopmentError 
+            ? '⚠️ Backups only work in production with PostgreSQL. This is a development environment using SQLite.'
+            : response.data.message || 'Failed to create backup',
+          severity: isDevelopmentError ? 'warning' : 'error',
         });
       }
     } catch (err) {
       console.error('Backup error:', err);
+      
+      // Check if it's a development environment error
+      const errorMessage = err.response?.data?.message || '';
+      const isDevelopmentError = errorMessage.includes('DATABASE_URL not set') || 
+                                 errorMessage.includes('Production database not configured');
+      
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to create backup. Please try again.',
-        severity: 'error',
+        message: isDevelopmentError 
+          ? '⚠️ Backups only work in production with PostgreSQL. This is a development environment using SQLite.'
+          : errorMessage || 'Failed to create backup. Please try again.',
+        severity: isDevelopmentError ? 'warning' : 'error',
       });
     } finally {
       setBackupLoading(false);
@@ -418,13 +432,13 @@ const AdminDashboard = () => {
                   </Box>
                   <Box>
                     <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
-                      Database Backup
+                      Database Backup (Production Only)
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                      Create a backup of the production database to Dropbox
+                      Create a backup of the PostgreSQL database to Dropbox
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 0.5, display: 'block' }}>
-                      Automatic backups run every 2 days
+                      ⚠️ Requires DATABASE_URL (Production) • Auto-backup every 2 days
                     </Typography>
                   </Box>
                 </Box>

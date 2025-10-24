@@ -13,3 +13,25 @@ services:
         value: "False"
       - key: DATABASE_URL
         fromService: null
+
+  # Automatic Database Backup - Runs every 2 days at midnight UTC
+  - type: cron
+    name: database-backup
+    env: python
+    plan: free
+    region: oregon
+    schedule: "0 0 */2 * *"  # Every 2 days at midnight UTC
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python manage.py backup_database --cleanup"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          name: sewa-portal-backend
+          type: web
+          property: connectionString
+      - key: DROPBOX_APP_KEY
+        sync: false
+      - key: DROPBOX_APP_SECRET
+        sync: false
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false
