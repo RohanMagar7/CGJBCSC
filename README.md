@@ -48,13 +48,18 @@ npm run dev
 
 ---
 
-## 📑 Documentation Structure
+## 📑 Project Overview
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **README.md** (this file) | Project overview & setup | Everyone |
-| **DEPLOYMENT_GUIDE.md** | Production deployment steps | DevOps/Admins |
-| **API_DOCUMENTATION.md** | API endpoints reference | Developers |
+**CGJBCSC Digital Sewa Portal** is a complete web application for managing government service applications. It provides a streamlined digital platform where citizens can apply for various government services, track their application status, upload required documents, and view available government schemes. Administrators have full control over user management, service catalog, application processing, and scheme management.
+
+### Key Capabilities
+- 🏛️ **Service Applications:** Users can browse services and submit applications online
+- 📄 **Document Management:** Upload documents via Dropbox cloud storage
+- 💳 **Payment Tracking:** Integrated payment management with UPI/QR support
+- 📢 **Announcements:** Admin can broadcast important updates
+- 🏆 **Gov Schemes:** Comprehensive government schemes information portal
+- 🔐 **Secure Auth:** JWT-based authentication with role-based access
+- 📱 **Responsive:** Works seamlessly on desktop, tablet, and mobile
 
 ---
 
@@ -251,7 +256,7 @@ Frontend will be available at: http://localhost:5173
 
 ### Backend Environment Variables
 
-Create `.env` file in `sewa_portal/` directory:
+Create `.env` file in `sewa_portal/` directory (optional for local development):
 
 ```env
 # Django Settings
@@ -262,17 +267,22 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 # Database (Production)
 DATABASE_URL=postgresql://user:password@host:port/dbname
 
-# Dropbox Storage
+# Dropbox Storage (for file uploads)
 DROPBOX_APP_KEY=your-app-key
 DROPBOX_APP_SECRET=your-app-secret
 DROPBOX_REFRESH_TOKEN=your-refresh-token
+DROPBOX_ROOT_PATH=/sewa_portal
 
 # CORS
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
-# Security (Production only)
+# Security (Production only - set to True)
 SECURE_SSL_REDIRECT=False
 SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SECURE=False
+```
+
+**Note:** For local development with SQLite, you don't need most of these variables. They're required for production deployment.
 CSRF_COOKIE_SECURE=False
 ```
 
@@ -589,33 +599,69 @@ For issues, questions, or suggestions:
 
 ## 🔌 API Overview
 
-**Base URL:** `http://localhost:8000/api/`
+### Base URLs
+- **Local Development:** `http://localhost:8000/api/`
+- **Production:** `https://cgjbcsc.onrender.com/api/`
 
-### Public Endpoints
+### Public Endpoints (No Authentication Required)
 ```
-POST   /api/users/              # Register new user
-POST   /api/token/              # Login (get JWT tokens)
-POST   /api/token/refresh/      # Refresh access token
-GET    /api/services/           # List all services
+POST   /api/users/                    # Register new user
+POST   /api/token/                    # Login (get JWT tokens)
+POST   /api/token/refresh/            # Refresh access token
+GET    /api/services/                 # List all services
+GET    /api/announcements/            # List active announcements
+GET    /api/gov-schemes/              # List active government schemes
 ```
 
-### Protected Endpoints (Require Authentication)
+### User Endpoints (Authentication Required)
 ```
-GET    /api/users/{id}/         # Get user profile (own or admin)
-GET    /api/applications/       # List applications (filtered)
-POST   /api/applications/       # Create application
-GET    /api/documents/          # List documents
-POST   /api/documents/          # Upload document
+GET    /api/users/{id}/               # Get user profile (own or admin)
+PATCH  /api/users/{id}/               # Update profile
+GET    /api/applications/             # List own applications
+POST   /api/applications/             # Create new application
+GET    /api/applications/{id}/        # Get application detail
+DELETE /api/applications/{id}/        # Delete application
+POST   /api/documents/                # Upload document
+GET    /api/payments/                 # List own payments
+GET    /api/payment-settings/active/  # Get payment UPI/QR info
 ```
 
 ### Admin Only Endpoints
 ```
-GET    /api/users/              # List all users
-POST   /api/services/           # Create service
-POST   /api/applications/{id}/update_status/  # Update status
+# User Management
+GET    /api/users/                    # List all users
+DELETE /api/users/{id}/               # Delete user
+
+# Service Management
+POST   /api/services/                 # Create service
+PATCH  /api/services/{id}/            # Update service
+DELETE /api/services/{id}/            # Delete service
+GET    /api/required-documents/       # List required documents
+POST   /api/required-documents/       # Create required document
+
+# Application Management
+POST   /api/applications/{id}/update_status/  # Approve/Reject
+POST   /api/final_documents/          # Upload final document
+
+# Payment Management
+POST   /api/payments/{id}/mark_completed/     # Mark payment completed
+GET    /api/payments/statistics/      # Payment statistics
+
+# Government Schemes
+POST   /api/gov-schemes/              # Create scheme
+PATCH  /api/gov-schemes/{id}/         # Update scheme
+DELETE /api/gov-schemes/{id}/         # Delete scheme
+
+# Announcements
+POST   /api/announcements/            # Create announcement
+PATCH  /api/announcements/{id}/       # Update announcement
+DELETE /api/announcements/{id}/       # Delete announcement
 ```
 
-**Full API Documentation:** See [COMPLETE_DEBUGGING_GUIDE.md](COMPLETE_DEBUGGING_GUIDE.md#api-documentation)
+**Authentication Header Format:**
+```
+Authorization: Bearer <your_access_token>
+```
 
 ---
 
@@ -861,9 +907,9 @@ bash quick_start.sh                # Start both servers
 
 ---
 
-## ✅ What Was Fixed
+## ✅ Feature Implementation Status
 
-All critical issues have been resolved:
+All critical features have been implemented and tested:
 
 1. ✅ **JWT Token Decoding** - Fixed frontend to fetch user profile after login
 2. ✅ **User Profile Permissions** - Users can now access their own profiles  
@@ -872,6 +918,8 @@ All critical issues have been resolved:
 5. ✅ **White Screen Issue** - Fixed ProtectedRoute loading states
 6. ✅ **Registration 401** - Fixed UserViewSet permissions
 7. ✅ **Port Conflicts** - Resolved server startup issues
+8. ✅ **Government Schemes Module** - Full CRUD for admin, public view for users
+9. ✅ **Deployment Configuration** - Render.com + Netlify setup complete
 
 **Details:** See [DEBUGGING_SUMMARY.md](DEBUGGING_SUMMARY.md)
 
@@ -881,13 +929,16 @@ All critical issues have been resolved:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Backend API | ✅ Operational | All endpoints working |
-| Frontend | ✅ Operational | All pages rendering |
-| Database | ✅ Ready | 8 test users configured |
-| Authentication | ✅ Working | JWT tokens functional |
-| Documentation | ✅ Complete | All guides written |
+| Backend API | ✅ Production Ready | All CRUD endpoints operational |
+| Frontend | ✅ Production Ready | All pages rendering correctly |
+| Database | ✅ Configured | PostgreSQL (prod) / SQLite (dev) |
+| Authentication | ✅ Working | JWT with refresh tokens |
+| File Storage | ✅ Configured | Dropbox cloud storage |
+| Gov Schemes | ✅ Complete | Admin CRUD + public view |
+| Deployment | ✅ Ready | Render + Netlify configured |
+| Documentation | ✅ Complete | Comprehensive guides |
 
-**Ready for:** Feature development and testing
+**Status:** ⭐ Production deployment ready - awaiting environment variable configuration on Render.com
 
 ---
 
@@ -923,8 +974,8 @@ For issues or questions:
 - Material-UI
 - Simple JWT
 
-**Last Updated:** October 12, 2025
+**Last Updated:** January 2025
 
 ---
 
-**⭐ The project is fully operational and ready for development!**
+**⭐ The project is production-ready and fully operational!**
