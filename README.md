@@ -1,26 +1,50 @@
 # 📘 CGJBCSC Digital Sewa Portal
 
-**Complete Digital Service Application System**  
-Built with Django REST Framework + React + JWT Authentication
+**Complete Digital Service Application & Government Schemes Management System**  
+Built with Django REST Framework + React + Vite + JWT Authentication + Dropbox Storage
 
-[![Status](https://img.shields.io/badge/status-operational-brightgreen)]()
+[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)]()
 [![Django](https://img.shields.io/badge/django-5.2.7-green)]()
-[![React](https://img.shields.io/badge/react-18-blue)]()
+[![React](https://img.shields.io/badge/react-19.1.1-blue)]()
+[![Vite](https://img.shields.io/badge/vite-7.1.7-purple)]()
+[![Deployment](https://img.shields.io/badge/deploy-Render%20%2B%20Netlify-orange)]()
 
 ---
 
-## 🚀 Quick Start
+## 🌟 Live Demo
+
+- 🌐 **Frontend:** [https://cgjbcsc.netlify.app](https://cgjbcsc.netlify.app)
+- 🔌 **Backend API:** [https://cgjbcsc.onrender.com](https://cgjbcsc.onrender.com)
+- � **Admin Panel:** [https://cgjbcsc.onrender.com/admin](https://cgjbcsc.onrender.com/admin)
+
+---
+
+## �🚀 Quick Start (Local Development)
 
 ```bash
-# Start both servers
-bash quick_start.sh
+# Clone repository
+git clone https://github.com/RohanMagar7/CGJBCSC.git
+cd CGJBCSC
+
+# Backend setup
+cd sewa_portal
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+
+# Frontend setup (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
 **Access:**
 - 🌐 Frontend: http://localhost:5173
 - 🔌 Backend API: http://localhost:8000
-- 👤 Test User: `testuser` / `test123`
-- 🔑 Admin: `admin` / `admin123`
+- 👤 Admin Panel: http://localhost:8000/admin
 
 ---
 
@@ -28,10 +52,9 @@ bash quick_start.sh
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| **README.md** (this file) | Quick start & overview | Everyone |
-| **QUICK_START.md** | Common commands & credentials | Developers |
-| **COMPLETE_DEBUGGING_GUIDE.md** | Full technical details | Developers |
-| **DEBUGGING_SUMMARY.md** | What was fixed | Team leads |
+| **README.md** (this file) | Project overview & setup | Everyone |
+| **DEPLOYMENT_GUIDE.md** | Production deployment steps | DevOps/Admins |
+| **API_DOCUMENTATION.md** | API endpoints reference | Developers |
 
 ---
 
@@ -39,42 +62,62 @@ bash quick_start.sh
 
 - [Features](#features)
 - [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
 - [Installation](#installation)
-- [Usage](#usage)
+- [Configuration](#configuration)
 - [API Overview](#api-overview)
 - [Authentication](#authentication)
-- [Testing](#testing)
-- [Troubleshooting](#troubleshooting)
+- [Deployment](#deployment)
 - [Development](#development)
+- [Contributing](#contributing)
 
 ---
 
 ## ✨ Features
 
-### User Features
-- ✅ User registration with validation
-- ✅ Secure login with JWT tokens
-- ✅ Personal dashboard
-- ✅ Service application management
-- ✅ Document upload system
-- ✅ Application status tracking
+### 👥 User Features
+- ✅ User registration & authentication
+- ✅ Personal dashboard with application tracking
+- ✅ Browse and apply for government services
+- ✅ Upload supporting documents (stored in Dropbox)
+- ✅ Real-time application status updates
+- ✅ Payment tracking and management
+- ✅ View active government schemes with details
+- ✅ Download final documents
 
-### Admin Features
-- ✅ User management
-- ✅ Service management
-- ✅ Application review system
-- ✅ Application approval/rejection
-- ✅ Email notifications
-- ✅ Complete admin dashboard
+### 🔐 Admin Features
+- ✅ Complete user management
+- ✅ Service catalog management
+- ✅ Application review & approval workflow
+- ✅ Document verification system
+- ✅ Upload final documents to users
+- ✅ Payment management & tracking
+- ✅ Payment statistics dashboard
+- ✅ Government schemes CRUD (Create/Read/Update/Delete)
+- ✅ System announcements management
+- ✅ UPI/QR code payment settings
 
-### Technical Features
-- ✅ JWT-based authentication
-- ✅ Role-based access control
-- ✅ RESTful API
-- ✅ CORS configured
-- ✅ Token refresh mechanism
-- ✅ Protected routes
-- ✅ Material-UI design system
+### 🎯 Government Schemes Module (NEW)
+- ✅ Admin can create/edit/delete government schemes
+- ✅ Categorized schemes (Education, Health, Agriculture, etc.)
+- ✅ Detailed scheme information (eligibility, benefits, documents)
+- ✅ Public view for active schemes
+- ✅ Search and filter by category
+- ✅ Step-by-step application guide
+- ✅ Official website links
+
+### 🛡️ Technical Features
+- ✅ JWT-based authentication with token refresh
+- ✅ Role-based access control (User/Admin)
+- ✅ RESTful API with Django REST Framework
+- ✅ Dropbox cloud storage for documents
+- ✅ CORS configured for production
+- ✅ Optimized database queries with indexes
+- ✅ Frontend caching for better performance
+- ✅ Code splitting & lazy loading
+- ✅ Responsive Material-UI design
+- ✅ Protected routes on frontend
+- ✅ Secure file upload validation
 
 ---
 
@@ -83,17 +126,65 @@ bash quick_start.sh
 ### Backend
 - **Framework:** Django 5.2.7
 - **API:** Django REST Framework 3.16.1
-- **Authentication:** Simple JWT 5.5.1
-- **Database:** SQLite3 (development)
-- **CORS:** django-cors-headers
+- **Authentication:** djangorestframework-simplejwt 5.5.1
+- **Database:** PostgreSQL (production) / SQLite3 (development)
+- **Storage:** Dropbox via django-storages 1.14.4
+- **Server:** Gunicorn 21.2.0 + WhiteNoise 6.5.0
+- **CORS:** django-cors-headers 4.9.0
 
 ### Frontend
-- **Framework:** React 18
-- **Build Tool:** Vite 7.1.9
-- **UI Library:** Material-UI v5
-- **Routing:** React Router v6
-- **HTTP Client:** Axios
-- **State Management:** React Context API
+- **Framework:** React 19.1.1
+- **Build Tool:** Vite 7.1.7
+- **UI Library:** Material-UI 7.3.4
+- **Routing:** React Router 7.9.4
+- **HTTP Client:** Axios 1.12.2
+- **State Management:** React Context API + Local State
+- **Auth:** JWT with localStorage & token refresh
+
+### DevOps & Deployment
+- **Backend Hosting:** Render.com
+- **Frontend Hosting:** Netlify
+- **Database:** Render PostgreSQL
+- **File Storage:** Dropbox Cloud
+- **CI/CD:** Git-based auto-deploy
+
+---
+
+## 📁 Project Structure
+
+```
+CGJBCSC/
+├── frontend/                  # React + Vite Frontend
+│   ├── src/
+│   │   ├── components/        # Reusable UI components
+│   │   ├── pages/             # Page components
+│   │   │   ├── admin/         # Admin pages (protected)
+│   │   │   ├── auth/          # Login/Register
+│   │   │   └── user/          # User pages
+│   │   ├── services/          # API service layer
+│   │   ├── context/           # React Context providers
+│   │   ├── hooks/             # Custom React hooks
+│   │   ├── utils/             # Helper functions
+│   │   └── config/            # Configuration files
+│   ├── public/                # Static assets
+│   └── package.json
+│
+└── sewa_portal/               # Django Backend
+    ├── core/                  # Main Django app
+    │   ├── models.py          # Database models
+    │   ├── serializers.py     # DRF serializers
+    │   ├── views.py           # API viewsets
+    │   ├── urls.py            # API routes
+    │   ├── admin.py           # Django admin config
+    │   ├── permissions.py     # Custom permissions
+    │   └── migrations/        # Database migrations
+    ├── sewa_portal/           # Project settings
+    │   ├── settings.py        # Django configuration
+    │   └── urls.py            # Root URL config
+    ├── requirements.txt       # Python dependencies
+    ├── render.yaml           # Render deployment config
+    └── manage.py             # Django CLI
+```
 
 ---
 
@@ -102,70 +193,383 @@ bash quick_start.sh
 ### Prerequisites
 - Python 3.12+
 - Node.js 18+
-- npm 9+
+- npm or yarn
+- Git
 
-### Step 1: Backend Setup
+### Step 1: Clone Repository
+
+```bash
+git clone https://github.com/RohanMagar7/CGJBCSC.git
+cd CGJBCSC
+```
+
+### Step 2: Backend Setup
 
 ```bash
 cd sewa_portal
 
-# Virtual environment already configured at ../sys/
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
 # Run migrations
-/home/rohan/Desktop/projects/CGJBCSC/sys/bin/python manage.py migrate
+python manage.py migrate
 
-# Create test users (recommended)
-cd ..
-python create_test_users.py
+# Create superuser (admin account)
+python manage.py createsuperuser
+
+# Start development server
+python manage.py runserver
 ```
 
-### Step 2: Frontend Setup
+Backend will be available at: http://localhost:8000
+
+### Step 3: Frontend Setup
+
+Open a new terminal:
 
 ```bash
 cd frontend
 
-# Install dependencies (if needed)
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
 ```
 
-### Step 3: Start Servers
+Frontend will be available at: http://localhost:5173
 
-```bash
-# Use the quick start script
-bash quick_start.sh
+---
 
-# Or manually:
-# Terminal 1 - Django
-cd sewa_portal
-/home/rohan/Desktop/projects/CGJBCSC/sys/bin/python manage.py runserver
+## ⚙️ Configuration
 
-# Terminal 2 - React
-cd frontend
-npm run dev
+### Backend Environment Variables
+
+Create `.env` file in `sewa_portal/` directory:
+
+```env
+# Django Settings
+DJANGO_SECRET_KEY=your-secret-key-here
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Database (Production)
+DATABASE_URL=postgresql://user:password@host:port/dbname
+
+# Dropbox Storage
+DROPBOX_APP_KEY=your-app-key
+DROPBOX_APP_SECRET=your-app-secret
+DROPBOX_REFRESH_TOKEN=your-refresh-token
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Security (Production only)
+SECURE_SSL_REDIRECT=False
+SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SECURE=False
+```
+
+### Frontend Environment Variables
+
+Edit `frontend/public/env.js`:
+
+```javascript
+window.__env = {
+  VITE_API_URL: 'http://127.0.0.1:8000'  // Backend API URL
+};
 ```
 
 ---
 
-## 🎯 Usage
+## 🔌 API Overview
 
-### For End Users
+### Base URL
+- **Development:** `http://localhost:8000/api/`
+- **Production:** `https://cgjbcsc.onrender.com/api/`
 
-1. **Register Account**
-   - Visit http://localhost:5173/register
-   - Fill in all required fields
-   - Submit to create account
+### Main Endpoints
 
-2. **Login**
-   - Visit http://localhost:5173/login
-   - Use credentials: `testuser` / `test123`
-   - Will redirect to dashboard
+#### Authentication
+- `POST /api/token/` - Login (get access & refresh tokens)
+- `POST /api/token/refresh/` - Refresh access token
 
-3. **Apply for Services**
-   - Browse available services
-   - Submit application
-   - Upload required documents
-   - Track status
+#### Users
+- `GET /api/users/` - List users (admin only)
+- `POST /api/users/` - Register new user
+- `GET /api/users/{id}/` - Get user details
+- `PATCH /api/users/{id}/` - Update user
+- `DELETE /api/users/{id}/` - Delete user (admin only)
 
-### For Administrators
+#### Services
+- `GET /api/services/` - List all services
+- `POST /api/services/` - Create service (admin only)
+- `GET /api/services/{id}/` - Get service details
+- `PATCH /api/services/{id}/` - Update service (admin only)
+- `DELETE /api/services/{id}/` - Delete service (admin only)
+
+#### Applications
+- `GET /api/applications/` - List applications
+- `POST /api/applications/` - Create new application
+- `GET /api/applications/{id}/` - Get application details
+- `POST /api/applications/{id}/update_status/` - Update status (admin only)
+
+#### Government Schemes (NEW)
+- `GET /api/gov-schemes/` - List schemes (public: active only)
+- `POST /api/gov-schemes/` - Create scheme (admin only)
+- `GET /api/gov-schemes/{id}/` - Get scheme details
+- `PATCH /api/gov-schemes/{id}/` - Update scheme (admin only)
+- `DELETE /api/gov-schemes/{id}/` - Delete scheme (admin only)
+
+#### Payments
+- `GET /api/payments/` - List payments
+- `POST /api/payments/` - Create payment
+- `POST /api/payments/{id}/mark_completed/` - Mark as completed (admin)
+- `GET /api/payments/statistics/` - Payment statistics (admin)
+
+#### Announcements
+- `GET /api/announcements/` - List announcements
+- `POST /api/announcements/` - Create announcement (admin only)
+
+**Full API documentation:** [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+
+---
+
+## 🔐 Authentication
+
+### JWT Token Flow
+
+1. **Login:** POST to `/api/token/` with credentials
+   ```json
+   {
+     "username": "testuser",
+     "password": "test123"
+   }
+   ```
+
+2. **Response:** Receive access & refresh tokens
+   ```json
+   {
+     "access": "eyJ0eXAiOiJKV1QiLCJhb...",
+     "refresh": "eyJ0eXAiOiJKV1QiLCJhb...",
+     "user": {...}
+   }
+   ```
+
+3. **Use Token:** Include in Authorization header
+   ```
+   Authorization: Bearer <access_token>
+   ```
+
+4. **Token Refresh:** When access token expires
+   ```json
+   POST /api/token/refresh/
+   {
+     "refresh": "your_refresh_token"
+   }
+   ```
+
+### User Roles
+
+- **User:** Can create applications, upload documents, view own data
+- **Admin:** Full access to all features + management capabilities
+
+---
+
+## 🚀 Deployment
+
+### Backend (Render.com)
+
+1. **Create Web Service**
+   - Connect GitHub repository
+   - Branch: `deploy`
+   - Root directory: `sewa_portal`
+
+2. **Build Settings**
+   ```bash
+   Build Command: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
+   Start Command: gunicorn sewa_portal.wsgi:application --bind 0.0.0.0:$PORT
+   ```
+
+3. **Environment Variables**
+   ```
+   DJANGO_SECRET_KEY=<generate-secure-key>
+   DJANGO_DEBUG=False
+   DJANGO_ALLOWED_HOSTS=cgjbcsc.onrender.com
+   DATABASE_URL=<postgres-url>
+   DROPBOX_APP_KEY=<your-key>
+   DROPBOX_APP_SECRET=<your-secret>
+   DROPBOX_REFRESH_TOKEN=<your-token>
+   SECURE_SSL_REDIRECT=True
+   SESSION_COOKIE_SECURE=True
+   CSRF_COOKIE_SECURE=True
+   CORS_ALLOWED_ORIGINS=https://cgjbcsc.netlify.app
+   ```
+
+4. **Add PostgreSQL Database**
+   - Create database in Render
+   - Copy DATABASE_URL to environment variables
+
+### Frontend (Netlify)
+
+1. **Create New Site**
+   - Connect GitHub repository
+   - Branch: `deploy`
+   - Base directory: `frontend`
+
+2. **Build Settings**
+   ```bash
+   Build command: npm run build
+   Publish directory: dist
+   ```
+
+3. **Update API URL**
+   - Edit `frontend/public/env.js`:
+   ```javascript
+   window.__env = {
+     VITE_API_URL: 'https://cgjbcsc.onrender.com'
+   };
+   ```
+
+4. **Deploy**
+   - Commit and push changes
+   - Netlify will auto-deploy
+
+### Post-Deployment
+
+1. Create superuser via Render shell:
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+2. Test all endpoints
+
+3. Add some initial data via Django admin
+
+---
+
+## 🛠️ Development
+
+### Database Migrations
+
+```bash
+# Create migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# View migration status
+python manage.py showmigrations
+```
+
+### Running Tests
+
+```bash
+# Backend tests
+cd sewa_portal
+python manage.py test
+
+# Frontend tests
+cd frontend
+npm test
+```
+
+### Code Quality
+
+```bash
+# Frontend linting
+cd frontend
+npm run lint
+
+# Backend linting (if configured)
+cd sewa_portal
+flake8 .
+```
+
+### Database Management
+
+```bash
+# Access Django shell
+python manage.py shell
+
+# Create database backup
+python manage.py dumpdata > backup.json
+
+# Load database backup
+python manage.py loaddata backup.json
+
+# Access database directly
+python manage.py dbshell
+```
+
+---
+
+## 📊 Database Schema
+
+### Main Models
+
+- **User:** Custom user model with role field (user/admin)
+- **Service:** Government services catalog
+- **RequiredDocument:** Required documents for each service
+- **UserApplication:** User application submissions
+- **UserDocument:** Uploaded user documents (Dropbox)
+- **FinalDocument:** Admin uploaded final documents
+- **Payment:** Payment tracking and management
+- **PaymentSettings:** UPI/QR code settings
+- **Announcement:** System announcements
+- **GovScheme:** Government schemes information (NEW)
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/YourFeature`
+3. Commit changes: `git commit -m 'Add YourFeature'`
+4. Push to branch: `git push origin feature/YourFeature`
+5. Submit a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👨‍💻 Author
+
+**Rohan Magar**
+- GitHub: [@RohanMagar7](https://github.com/RohanMagar7)
+- Project: [CGJBCSC](https://github.com/RohanMagar7/CGJBCSC)
+
+---
+
+## 📞 Support
+
+For issues, questions, or suggestions:
+- Open an issue on GitHub
+- Contact via project repository
+
+---
+
+## 🙏 Acknowledgments
+
+- Django REST Framework team
+- React and Vite communities
+- Material-UI team
+- All open-source contributors
+
+---
+
+**⭐ Star this repository if you find it helpful!**
 
 1. **Login as Admin**
    - Use credentials: `admin` / `admin123`
