@@ -1,12 +1,4 @@
 services:
-  # PostgreSQL Database
-  - type: pserv
-    name: sewa-portal-db
-    env: docker
-    plan: free
-    region: oregon
-    ipAllowList: []
-
   # Web Service
   - type: web
     name: sewa-portal-backend
@@ -17,15 +9,20 @@ services:
     startCommand: "gunicorn sewa_portal.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: DJANGO_SECRET_KEY
-        value: "replace-with-secret"
+        sync: false
       - key: DJANGO_DEBUG
         value: "False"
       - key: DATABASE_URL
-        fromDatabase:
-          name: sewa-portal-db
-          property: connectionString
+        sync: false
+      - key: DROPBOX_APP_KEY
+        sync: false
+      - key: DROPBOX_APP_SECRET
+        sync: false
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false
 
   # Automatic Database Backup - Runs every 2 days at midnight UTC
+  # Note: Cron jobs on free tier must have environment variables set manually in dashboard
   - type: cron
     name: database-backup
     env: python
@@ -36,10 +33,7 @@ services:
     startCommand: "python manage.py backup_database --cleanup"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          name: sewa-portal-backend
-          type: web
-          property: connectionString
+        sync: false
       - key: DROPBOX_APP_KEY
         sync: false
       - key: DROPBOX_APP_SECRET
