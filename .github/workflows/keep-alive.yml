@@ -16,10 +16,10 @@ jobs:
       - name: Ping Backend Health Check
         run: |
           echo "Pinging backend at $(date)"
-          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://cgjbcsc.onrender.com)
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://cgjbcsc.onrender.com/admin  )
           status=$(echo "$response" | grep "HTTP_STATUS" | cut -d: -f2)
           
-          if [ "$status" = "404" ]; then
+          if [ "$status" = "200" ]; then
             echo "✓ Backend is active (HTTP $status)"
           else
             echo "✗ Backend returned HTTP $status"
