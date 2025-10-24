@@ -4,7 +4,7 @@
 // 2. Vite-injected build-time env `import.meta.env.VITE_API_URL`
 // 3. Fallback to localhost for local development
 const runtimeApi = typeof window !== 'undefined' && window.__env && window.__env.VITE_API_URL;
-export const API_BASE_URL = runtimeApi || import.meta.env.VITE_API_URL || 'https://cgjbcsc.onrender.com'
+export const API_BASE_URL = runtimeApi || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 export const API_ENDPOINTS = {
   // Auth
   TOKEN: '/api/token/',
@@ -53,4 +53,9 @@ export const API_ENDPOINTS = {
   // Government Schemes
   GOV_SCHEMES: '/api/gov-schemes/',
   GOV_SCHEME_DETAIL: (id) => `/api/gov-schemes/${id}/`,
+  
+  // Backups
+  BACKUP_CREATE: '/api/backups/create/',
+  BACKUP_LIST: '/api/backups/list/',
+  BACKUP_CLEANUP: '/api/backups/cleanup/',
 };

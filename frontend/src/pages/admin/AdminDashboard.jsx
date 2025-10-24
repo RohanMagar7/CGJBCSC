@@ -20,6 +20,9 @@ import {
   Divider,
   IconButton,
   alpha,
+  Alert,
+  Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import {
   People,
@@ -35,6 +38,7 @@ import {
   ManageAccounts,
   Settings,
   Description,
+  CloudUpload,
 } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -46,6 +50,8 @@ const AdminDashboard = () => {
   const [services, setServices] = useState([]);
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -75,6 +81,39 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const response = await apiService.createBackup();
+      if (response.data.success) {
+        setSnackbar({
+          open: true,
+          message: `Backup created successfully: ${response.data.backup?.name || 'backup file'}`,
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.data.message || 'Failed to create backup',
+          severity: 'error',
+        });
+      }
+    } catch (err) {
+      console.error('Backup error:', err);
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to create backup. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   const stats = [
@@ -349,6 +388,71 @@ const AdminDashboard = () => {
           </Grid>
         </Box>
 
+        {/* Database Backup Section */}
+        <Box sx={{ mb: 4 }}>
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CloudUpload sx={{ fontSize: 32 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
+                      Database Backup
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                      Create a backup of the production database to Dropbox
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 0.5, display: 'block' }}>
+                      Automatic backups run every 2 days
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={backupLoading ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                  disabled={backupLoading}
+                  onClick={handleBackup}
+                  sx={{
+                    bgcolor: 'white',
+                    color: '#667eea',
+                    px: 3,
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }}
+                >
+                  {backupLoading ? 'Creating Backup...' : 'Create Backup Now'}
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
         {/* Recent Applications */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -497,6 +601,18 @@ const AdminDashboard = () => {
           </Grid>
         </Box>
       </Container>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

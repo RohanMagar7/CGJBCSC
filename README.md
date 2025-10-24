@@ -48,18 +48,13 @@ npm run dev
 
 ---
 
-## 📑 Project Overview
+## 📑 Documentation Structure
 
-**CGJBCSC Digital Sewa Portal** is a complete web application for managing government service applications. It provides a streamlined digital platform where citizens can apply for various government services, track their application status, upload required documents, and view available government schemes. Administrators have full control over user management, service catalog, application processing, and scheme management.
-
-### Key Capabilities
-- 🏛️ **Service Applications:** Users can browse services and submit applications online
-- 📄 **Document Management:** Upload documents via Dropbox cloud storage
-- 💳 **Payment Tracking:** Integrated payment management with UPI/QR support
-- 📢 **Announcements:** Admin can broadcast important updates
-- 🏆 **Gov Schemes:** Comprehensive government schemes information portal
-- 🔐 **Secure Auth:** JWT-based authentication with role-based access
-- 📱 **Responsive:** Works seamlessly on desktop, tablet, and mobile
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| **README.md** (this file) | Project overview & setup | Everyone |
+| **DEPLOYMENT_GUIDE.md** | Production deployment steps | DevOps/Admins |
+| **API_DOCUMENTATION.md** | API endpoints reference | Developers |
 
 ---
 
@@ -101,6 +96,7 @@ npm run dev
 - ✅ Government schemes CRUD (Create/Read/Update/Delete)
 - ✅ System announcements management
 - ✅ UPI/QR code payment settings
+- ✅ **Database backup system (production only)**
 
 ### 🎯 Government Schemes Module (NEW)
 - ✅ Admin can create/edit/delete government schemes
@@ -110,6 +106,15 @@ npm run dev
 - ✅ Search and filter by category
 - ✅ Step-by-step application guide
 - ✅ Official website links
+
+### 💾 Database Backup System (NEW)
+- ✅ **Production-only feature** - Automatically disabled in development
+- ✅ **One-click backup** - Admin dashboard button to create immediate backup
+- ✅ **Automatic backups** - Scheduled backups every 2 days via cron job
+- ✅ **Dropbox storage** - All backups stored securely in Dropbox cloud
+- ✅ **Backup retention** - Automatically keeps last 7 backups, deletes older ones
+- ✅ **PostgreSQL support** - Uses pg_dump for database export
+- ✅ **Admin notifications** - Success/error messages with backup details
 
 ### 🛡️ Technical Features
 - ✅ JWT-based authentication with token refresh
@@ -256,7 +261,7 @@ Frontend will be available at: http://localhost:5173
 
 ### Backend Environment Variables
 
-Create `.env` file in `sewa_portal/` directory (optional for local development):
+Create `.env` file in `sewa_portal/` directory:
 
 ```env
 # Django Settings
@@ -267,22 +272,17 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 # Database (Production)
 DATABASE_URL=postgresql://user:password@host:port/dbname
 
-# Dropbox Storage (for file uploads)
+# Dropbox Storage
 DROPBOX_APP_KEY=your-app-key
 DROPBOX_APP_SECRET=your-app-secret
 DROPBOX_REFRESH_TOKEN=your-refresh-token
-DROPBOX_ROOT_PATH=/sewa_portal
 
 # CORS
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
-# Security (Production only - set to True)
+# Security (Production only)
 SECURE_SSL_REDIRECT=False
 SESSION_COOKIE_SECURE=False
-CSRF_COOKIE_SECURE=False
-```
-
-**Note:** For local development with SQLite, you don't need most of these variables. They're required for production deployment.
 CSRF_COOKIE_SECURE=False
 ```
 
@@ -453,6 +453,8 @@ window.__env = {
 
 ### Post-Deployment
 
+### Post-Deployment
+
 1. Create superuser via Render shell:
    ```bash
    python manage.py createsuperuser
@@ -461,6 +463,31 @@ window.__env = {
 2. Test all endpoints
 
 3. Add some initial data via Django admin
+
+4. **Setup automatic database backups (Production only):**
+   
+   Go to Render.com dashboard → Your service → Cron Jobs → Add Cron Job:
+   
+   ```
+   Command: python manage.py backup_database --cleanup
+   Schedule: 0 0 */2 * *  (Every 2 days at midnight UTC)
+   ```
+   
+   This will:
+   - Create PostgreSQL backup using `pg_dump`
+   - Upload backup to Dropbox `/backups/` folder
+   - Delete old backups (keeps last 7)
+   
+   **Manual backup via admin dashboard:**
+   - Login as admin
+   - Go to Admin Dashboard
+   - Click "Create Backup Now" button in the Database Backup section
+   
+   **Environment variables required for backups:**
+   - `DATABASE_URL` - PostgreSQL connection string (already set by Render)
+   - `DROPBOX_APP_KEY` - Your Dropbox app key
+   - `DROPBOX_APP_SECRET` - Your Dropbox app secret
+   - `DROPBOX_REFRESH_TOKEN` - OAuth2 refresh token (get via `get_dropbox_refresh_token.py`)
 
 ---
 
@@ -473,10 +500,6 @@ window.__env = {
 python manage.py makemigrations
 
 # Apply migrations
-python manage.py migrate
-
-# View migration status
-python manage.py showmigrations
 ```
 
 ### Running Tests
@@ -599,69 +622,33 @@ For issues, questions, or suggestions:
 
 ## 🔌 API Overview
 
-### Base URLs
-- **Local Development:** `http://localhost:8000/api/`
-- **Production:** `https://cgjbcsc.onrender.com/api/`
+**Base URL:** `http://localhost:8000/api/`
 
-### Public Endpoints (No Authentication Required)
+### Public Endpoints
 ```
-POST   /api/users/                    # Register new user
-POST   /api/token/                    # Login (get JWT tokens)
-POST   /api/token/refresh/            # Refresh access token
-GET    /api/services/                 # List all services
-GET    /api/announcements/            # List active announcements
-GET    /api/gov-schemes/              # List active government schemes
+POST   /api/users/              # Register new user
+POST   /api/token/              # Login (get JWT tokens)
+POST   /api/token/refresh/      # Refresh access token
+GET    /api/services/           # List all services
 ```
 
-### User Endpoints (Authentication Required)
+### Protected Endpoints (Require Authentication)
 ```
-GET    /api/users/{id}/               # Get user profile (own or admin)
-PATCH  /api/users/{id}/               # Update profile
-GET    /api/applications/             # List own applications
-POST   /api/applications/             # Create new application
-GET    /api/applications/{id}/        # Get application detail
-DELETE /api/applications/{id}/        # Delete application
-POST   /api/documents/                # Upload document
-GET    /api/payments/                 # List own payments
-GET    /api/payment-settings/active/  # Get payment UPI/QR info
+GET    /api/users/{id}/         # Get user profile (own or admin)
+GET    /api/applications/       # List applications (filtered)
+POST   /api/applications/       # Create application
+GET    /api/documents/          # List documents
+POST   /api/documents/          # Upload document
 ```
 
 ### Admin Only Endpoints
 ```
-# User Management
-GET    /api/users/                    # List all users
-DELETE /api/users/{id}/               # Delete user
-
-# Service Management
-POST   /api/services/                 # Create service
-PATCH  /api/services/{id}/            # Update service
-DELETE /api/services/{id}/            # Delete service
-GET    /api/required-documents/       # List required documents
-POST   /api/required-documents/       # Create required document
-
-# Application Management
-POST   /api/applications/{id}/update_status/  # Approve/Reject
-POST   /api/final_documents/          # Upload final document
-
-# Payment Management
-POST   /api/payments/{id}/mark_completed/     # Mark payment completed
-GET    /api/payments/statistics/      # Payment statistics
-
-# Government Schemes
-POST   /api/gov-schemes/              # Create scheme
-PATCH  /api/gov-schemes/{id}/         # Update scheme
-DELETE /api/gov-schemes/{id}/         # Delete scheme
-
-# Announcements
-POST   /api/announcements/            # Create announcement
-PATCH  /api/announcements/{id}/       # Update announcement
-DELETE /api/announcements/{id}/       # Delete announcement
+GET    /api/users/              # List all users
+POST   /api/services/           # Create service
+POST   /api/applications/{id}/update_status/  # Update status
 ```
 
-**Authentication Header Format:**
-```
-Authorization: Bearer <your_access_token>
-```
+**Full API Documentation:** See [COMPLETE_DEBUGGING_GUIDE.md](COMPLETE_DEBUGGING_GUIDE.md#api-documentation)
 
 ---
 
@@ -907,9 +894,9 @@ bash quick_start.sh                # Start both servers
 
 ---
 
-## ✅ Feature Implementation Status
+## ✅ What Was Fixed
 
-All critical features have been implemented and tested:
+All critical issues have been resolved:
 
 1. ✅ **JWT Token Decoding** - Fixed frontend to fetch user profile after login
 2. ✅ **User Profile Permissions** - Users can now access their own profiles  
@@ -918,8 +905,6 @@ All critical features have been implemented and tested:
 5. ✅ **White Screen Issue** - Fixed ProtectedRoute loading states
 6. ✅ **Registration 401** - Fixed UserViewSet permissions
 7. ✅ **Port Conflicts** - Resolved server startup issues
-8. ✅ **Government Schemes Module** - Full CRUD for admin, public view for users
-9. ✅ **Deployment Configuration** - Render.com + Netlify setup complete
 
 **Details:** See [DEBUGGING_SUMMARY.md](DEBUGGING_SUMMARY.md)
 
@@ -929,16 +914,13 @@ All critical features have been implemented and tested:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Backend API | ✅ Production Ready | All CRUD endpoints operational |
-| Frontend | ✅ Production Ready | All pages rendering correctly |
-| Database | ✅ Configured | PostgreSQL (prod) / SQLite (dev) |
-| Authentication | ✅ Working | JWT with refresh tokens |
-| File Storage | ✅ Configured | Dropbox cloud storage |
-| Gov Schemes | ✅ Complete | Admin CRUD + public view |
-| Deployment | ✅ Ready | Render + Netlify configured |
-| Documentation | ✅ Complete | Comprehensive guides |
+| Backend API | ✅ Operational | All endpoints working |
+| Frontend | ✅ Operational | All pages rendering |
+| Database | ✅ Ready | 8 test users configured |
+| Authentication | ✅ Working | JWT tokens functional |
+| Documentation | ✅ Complete | All guides written |
 
-**Status:** ⭐ Production deployment ready - awaiting environment variable configuration on Render.com
+**Ready for:** Feature development and testing
 
 ---
 
@@ -974,8 +956,8 @@ For issues or questions:
 - Material-UI
 - Simple JWT
 
-**Last Updated:** January 2025
+**Last Updated:** October 12, 2025
 
 ---
 
-**⭐ The project is production-ready and fully operational!**
+**⭐ The project is fully operational and ready for development!**

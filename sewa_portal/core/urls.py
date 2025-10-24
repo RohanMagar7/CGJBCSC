@@ -3,7 +3,7 @@ from rest_framework import routers
 from django.urls import path, include
 from .views import (UserViewSet, ServiceViewSet, UserApplicationViewSet, UserDocumentViewSet, 
                     FinalDocumentViewSet, AnnouncementViewSet, PaymentViewSet, RequiredDocumentViewSet,
-                    PaymentSettingsViewSet, GovSchemeViewSet)
+                    PaymentSettingsViewSet, GovSchemeViewSet, BackupViewSet)
 
 router = routers.DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -16,6 +16,7 @@ router.register(r'announcements', AnnouncementViewSet)
 router.register(r'gov-schemes', GovSchemeViewSet, basename='govscheme')
 router.register(r'payments', PaymentViewSet)
 router.register(r'payment-settings', PaymentSettingsViewSet)
+router.register(r'backups', BackupViewSet, basename='backup')
 
 urlpatterns = [
     path('', include(router.urls)),

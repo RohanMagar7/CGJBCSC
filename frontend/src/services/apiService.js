@@ -218,6 +218,11 @@ const apiService = {
     return axiosInstance.delete(API_ENDPOINTS.GOV_SCHEME_DETAIL(id));
   },
   
+  // Backups - Admin only, no caching needed
+  createBackup: () => axiosInstance.post(API_ENDPOINTS.BACKUP_CREATE),
+  listBackups: () => axiosInstance.get(API_ENDPOINTS.BACKUP_LIST),
+  cleanupBackups: (keepCount = 7) => axiosInstance.post(API_ENDPOINTS.BACKUP_CLEANUP, { keep_count: keepCount }),
+  
   // Cache management utilities
   clearCache: () => cacheManager.clear(),
   invalidateCache: (pattern) => cacheManager.invalidate(pattern),

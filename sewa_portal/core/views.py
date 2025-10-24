@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 # Create your views here.
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status as http_status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -16,6 +16,7 @@ from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSeri
                           PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer,
                           GovSchemeSerializer)
 from .permissions import IsAdminUser, IsOwnerOrAdmin
+from .backup_manager import backup_manager
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -434,3 +435,77 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(settings)
             return Response(serializer.data)
         return Response({'detail': 'No active payment settings found'}, status=404)
+
+
+class BackupViewSet(viewsets.ViewSet):
+    """
+    Admin-only endpoint for database backup management
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_backup(self, request):
+        """
+        Create a new database backup and upload to Dropbox
+        POST /api/backups/create/
+        """
+        logger.info(f"Manual backup initiated by admin: {request.user.username}")
+        
+        success, message, file_info = backup_manager.create_backup()
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': message,
+                'backup': file_info
+            }, status=http_status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'success': False,
+                'message': message
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='list')
+    def list_backups(self, request):
+        """
+        List all available backups in Dropbox
+        GET /api/backups/list/
+        """
+        success, backups = backup_manager.list_backups()
+        
+        if success:
+            return Response({
+                'success': True,
+                'count': len(backups),
+                'backups': backups
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Failed to list backups'
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'], url_path='cleanup')
+    def cleanup_old(self, request):
+        """
+        Delete old backups, keeping only the most recent ones
+        POST /api/backups/cleanup/
+        """
+        keep_count = request.data.get('keep_count', 7)
+        
+        logger.info(f"Backup cleanup initiated by admin: {request.user.username}")
+        
+        success, deleted_count = backup_manager.delete_old_backups(keep_count=keep_count)
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': f'Deleted {deleted_count} old backup(s)',
+                'deleted_count': deleted_count
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Failed to cleanup backups'
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+
