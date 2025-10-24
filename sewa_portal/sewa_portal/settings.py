@@ -94,13 +94,23 @@ WSGI_APPLICATION = 'sewa_portal.wsgi.application'
 # Prefer an explicit DATABASE_URL in the environment (production). If it's not
 # set, fall back to a local SQLite database for development to avoid attempting
 # DNS resolution of a production host during local runs.
-DATABASE_URL = os.environ.get('DATABASE_URL')
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 
 if DATABASE_URL:
-    # Parse a Postgres (or other) URL from the environment
-    DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-    }
+    # Only use dj_database_url if DATABASE_URL is set and not empty
+    try:
+        DATABASES = {
+            'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        }
+    except Exception as e:
+        print(f"Error parsing DATABASE_URL: {e}")
+        # Fallback to SQLite if parsing fails
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 else:
     # Local development fallback
     DATABASES = {
