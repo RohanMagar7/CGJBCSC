@@ -1,4 +1,13 @@
 services:
+  # PostgreSQL Database
+  - type: pserv
+    name: sewa-portal-db
+    env: docker
+    plan: free
+    region: oregon
+    ipAllowList: []
+
+  # Web Service
   - type: web
     name: sewa-portal-backend
     env: python
@@ -12,7 +21,9 @@ services:
       - key: DJANGO_DEBUG
         value: "False"
       - key: DATABASE_URL
-        fromService: null
+        fromDatabase:
+          name: sewa-portal-db
+          property: connectionString
 
   # Automatic Database Backup - Runs every 2 days at midnight UTC
   - type: cron
