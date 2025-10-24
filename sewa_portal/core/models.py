@@ -304,3 +304,58 @@ class Announcement(models.Model):
     
     def __str__(self):
         return self.title
+
+
+# -------------------------
+# Government Scheme Model
+# -------------------------
+class GovScheme(models.Model):
+    CATEGORY_CHOICES = (
+        ('Education', 'Education'),
+        ('Health', 'Health'),
+        ('Agriculture', 'Agriculture'),
+        ('Employment', 'Employment'),
+        ('Housing', 'Housing'),
+        ('Business', 'Business'),
+        ('Social Welfare', 'Social Welfare'),
+    )
+
+    scheme_id = models.AutoField(primary_key=True, editable=False)
+    name = models.CharField(max_length=255, db_index=True)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='Social Welfare', db_index=True)
+    description = models.TextField(blank=True)
+    eligibility = models.TextField(blank=True)
+    benefits = models.TextField(blank=True)
+    # Store lists as JSON for documents and steps
+    try:
+        JSONField = models.JSONField
+    except AttributeError:
+        JSONField = None
+
+    if JSONField:
+        documents = JSONField(default=list, blank=True)
+        how_to_apply = JSONField(default=list, blank=True)
+    else:
+        # Fallback to TextField storing JSON string (rare, modern Django should have JSONField)
+        documents = models.TextField(blank=True, default='[]')
+        how_to_apply = models.TextField(blank=True, default='[]')
+
+    official_website = models.URLField(blank=True, null=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['category', 'is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def id(self):
+        """Alias to match frontend expectations (scheme.id)"""
+        return self.scheme_id

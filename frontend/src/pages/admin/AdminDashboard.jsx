@@ -27,6 +27,7 @@ import {
   CheckCircle,
   HourglassEmpty,
   AdminPanelSettings,
+  AccountBalance,
   Visibility,
   TrendingUp,
   Category,
@@ -43,6 +44,7 @@ const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -60,6 +62,14 @@ const AdminDashboard = () => {
       setApplications(appsRes.data);
       setUsers(usersRes.data);
       setServices(servicesRes.data);
+        // Try to fetch gov schemes count for admin quick action (non-blocking)
+        try {
+          const schemesRes = await apiService.getGovSchemes?.();
+          setSchemes(schemesRes?.data || []);
+        } catch (e) {
+          // ignore, optional feature
+          setSchemes([]);
+        }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -152,6 +162,15 @@ const AdminDashboard = () => {
       bgColor: alpha('#4caf50', 0.1),
       link: '/admin/services',
       count: services.length,
+    },
+    {
+      title: 'Manage Gov Schemes',
+      description: 'Create and manage government schemes visible to users',
+      icon: <AccountBalance sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gov-schemes',
+      count: schemes.length,
     },
   ];
 

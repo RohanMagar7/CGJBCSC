@@ -74,6 +74,7 @@ const Navbar = () => {
           : [
               { label: 'Home', icon: <Home />, path: '/home' },
               { label: 'Services', icon: <CardTravel />, path: '/services' },
+              { label: 'Gov Schemes', icon: <Description />, path: '/gov-schemes' },
               { label: 'My Applications', icon: <ListAlt />, path: '/applications' },
             ]),
       ]

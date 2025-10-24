@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+import json
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -163,3 +164,99 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         model = Announcement
         fields = ['id', 'title', 'content', 'type', 'is_active', 'created_at', 'updated_at', 'created_by']
         read_only_fields = ['created_at', 'updated_at', 'created_by']
+
+
+class GovSchemeSerializer(serializers.ModelSerializer):
+    # Expose `id` to match frontend expectations (alias of scheme_id)
+    id = serializers.IntegerField(source='scheme_id', read_only=True)
+    howToApply = serializers.SerializerMethodField()
+    officialWebsite = serializers.SerializerMethodField()
+
+    class Meta:
+        model = None  # set below to avoid forward reference issues
+        # fields will be set below after model is imported
+
+    def to_representation(self, instance):
+        # Use default representation and then add camelCase aliases
+        rep = super().to_representation(instance)
+        # Add camelCase aliases that frontend sometimes expects
+        rep['howToApply'] = rep.get('how_to_apply') or []
+        rep['officialWebsite'] = rep.get('official_website') or rep.get('officialWebsite')
+        return rep
+
+    def get_howToApply(self, obj):
+        try:
+            val = getattr(obj, 'how_to_apply')
+            if isinstance(val, str):
+                return json.loads(val or '[]')
+            return val or []
+        except Exception:
+            return []
+
+    def get_officialWebsite(self, obj):
+        return getattr(obj, 'official_website', None)
+
+    def create(self, validated_data):
+        # Accept both camelCase and snake_case from frontend
+        # Move howToApply to how_to_apply if present
+        data = dict(validated_data)
+        if 'howToApply' in self.initial_data:
+            data['how_to_apply'] = self.initial_data.get('howToApply')
+        if 'officialWebsite' in self.initial_data:
+            data['official_website'] = self.initial_data.get('officialWebsite')
+
+        # Handle text fallback for JSONField (if model uses TextField)
+        from .models import GovScheme
+        if hasattr(GovScheme, 'how_to_apply') and isinstance(GovScheme._meta.get_field('how_to_apply'), type(GovScheme._meta.get_field('how_to_apply'))):
+            pass
+
+        # Normalize documents/how_to_apply to JSON/list
+        docs = data.get('documents', [])
+        how = data.get('how_to_apply', [])
+        try:
+            if isinstance(docs, str):
+                data['documents'] = json.loads(docs)
+        except Exception:
+            data['documents'] = []
+        try:
+            if isinstance(how, str):
+                data['how_to_apply'] = json.loads(how)
+        except Exception:
+            data['how_to_apply'] = []
+
+        return GovScheme.objects.create(**data)
+
+    def update(self, instance, validated_data):
+        # Similar normalization as create
+        if 'howToApply' in self.initial_data:
+            validated_data['how_to_apply'] = self.initial_data.get('howToApply')
+        if 'officialWebsite' in self.initial_data:
+            validated_data['official_website'] = self.initial_data.get('officialWebsite')
+
+        docs = validated_data.get('documents', None)
+        how = validated_data.get('how_to_apply', None)
+        if docs is not None and isinstance(docs, str):
+            try:
+                validated_data['documents'] = json.loads(docs)
+            except Exception:
+                validated_data['documents'] = []
+        if how is not None and isinstance(how, str):
+            try:
+                validated_data['how_to_apply'] = json.loads(how)
+            except Exception:
+                validated_data['how_to_apply'] = []
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+# Late bind model and Meta to avoid circular import problems
+try:
+    from .models import GovScheme
+    GovSchemeSerializer.Meta.model = GovScheme
+    GovSchemeSerializer.Meta.fields = ['id', 'name', 'category', 'description', 'eligibility', 'benefits', 'documents', 'how_to_apply', 'howToApply', 'official_website', 'officialWebsite', 'is_active', 'created_at', 'updated_at']
+except Exception:
+    # If import fails for any reason (shouldn't in normal runtime), skip binding
+    pass

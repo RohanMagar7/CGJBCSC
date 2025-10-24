@@ -1,6 +1,6 @@
 import axiosInstance from './axios';
-import { API_ENDPOINTS } from '../../config/api';
-import { cacheManager, withCache } from '../../utils/cacheManager';
+import { API_ENDPOINTS } from '../config/api';
+import { cacheManager, withCache } from '../utils/cacheManager';
 
 // Cache configuration
 const CACHE_TTL = {
@@ -197,6 +197,25 @@ const apiService = {
   updatePaymentSettings: (id, data) => {
     cacheManager.invalidate(/^payment-settings/);
     return axiosInstance.patch(API_ENDPOINTS.PAYMENT_SETTINGS_DETAIL(id), data);
+  },
+
+  // Government Schemes - Medium cache (admin can update)
+  getGovSchemes: withCache(
+    () => axiosInstance.get(API_ENDPOINTS.GOV_SCHEMES),
+    'gov-schemes',
+    CACHE_TTL.MEDIUM
+  ),
+  createGovScheme: (data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.post(API_ENDPOINTS.GOV_SCHEMES, data);
+  },
+  updateGovScheme: (id, data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.patch(API_ENDPOINTS.GOV_SCHEME_DETAIL(id), data);
+  },
+  deleteGovScheme: (id) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.delete(API_ENDPOINTS.GOV_SCHEME_DETAIL(id));
   },
   
   // Cache management utilities

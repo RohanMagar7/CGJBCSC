@@ -10,10 +10,11 @@ import logging
 logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.db import models
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
-                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer)
+                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer,
+                          GovSchemeSerializer)
 from .permissions import IsAdminUser, IsOwnerOrAdmin
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -245,6 +246,35 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class GovSchemeViewSet(viewsets.ModelViewSet):
+    """CRUD for government schemes used by admin UI and public listing.
+    - Admins: full access (list/retrieve/create/update/delete)
+    - Public users: list/retrieve only (only active schemes)
+    """
+    # Provide a queryset so DRF router can automatically determine basename
+    queryset = GovScheme.objects.all().order_by('-created_at')
+    serializer_class = GovSchemeSerializer
+
+    def get_permissions(self):
+        # POST/PUT/PATCH/DELETE only allowed for admin users
+        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            return [permissions.IsAuthenticated(), IsAdminUser()]
+        return [permissions.AllowAny()]
+
+    def get_queryset(self):
+        # Import model here to avoid top-level import cycles
+        from .models import GovScheme
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'admin':
+            return GovScheme.objects.all().order_by('-created_at')
+        return GovScheme.objects.filter(is_active=True).order_by('-created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
 
 class PaymentViewSet(viewsets.ModelViewSet):

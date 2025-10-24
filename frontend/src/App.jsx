@@ -18,6 +18,7 @@ import Home from './pages/user/Home'
 const Applications = lazy(() => import('./pages/user/Applications'));
 const ApplicationDetail = lazy(() => import('./pages/user/ApplicationDetail'));
 const Services = lazy(() => import('./pages/user/Services'));
+const GovSchemesInfo = lazy(() => import('./pages/user/GovSchemesInfo'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminApplications = lazy(() => import('./pages/admin/AdminApplications'));
 const AdminApplicationReview = lazy(() => import('./pages/admin/AdminApplicationReview'));
@@ -25,6 +26,7 @@ const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
+const AdminGovSchemes = lazy(() => import('./pages/admin/AdminGovSchemes'));
 
 // Component to handle root route based on user authentication
 const RootRoute = () => {
@@ -133,12 +135,14 @@ function App() {
                   <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
                   <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+                  <Route path="/gov-schemes" element={<ProtectedRoute><GovSchemesInfo /></ProtectedRoute>} />
                   <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
                   <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminApplications /></ProtectedRoute>} />
                   <Route path="/admin/applications/:id" element={<ProtectedRoute adminOnly><AdminApplicationReview /></ProtectedRoute>} />
                   <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
+                  <Route path="/admin/gov-schemes" element={<ProtectedRoute adminOnly><AdminGovSchemes /></ProtectedRoute>} />
                   <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
                   <Route path="/admin/announcements" element={<ProtectedRoute adminOnly><AdminAnnouncements /></ProtectedRoute>} />
                   <Route path="/admin/payments" element={<ProtectedRoute adminOnly><AdminPayments /></ProtectedRoute>} />
