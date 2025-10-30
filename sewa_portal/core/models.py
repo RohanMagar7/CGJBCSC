@@ -45,8 +45,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, editable=False)
     full_name = models.CharField(max_length=100, db_index=True)  # Index for name searches
     username = models.CharField(max_length=50, unique=True, db_index=True)  # Index for login
-    email = models.EmailField(blank=True, null=True, db_index=True)  # Index for email lookups
-    phone_number = models.CharField(max_length=15, db_index=True)  # Index for phone searches
+    # Make email and phone unique so duplicates are prevented at the DB level
+    email = models.EmailField(blank=True, null=True, unique=True, db_index=True)  # Index for email lookups
+    phone_number = models.CharField(max_length=15, unique=True, db_index=True)  # Index for phone searches
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user', db_index=True)  # Index for role filtering
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True, db_index=True)  # Index for active user queries
