@@ -10,6 +10,14 @@ import logging
 logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.db import models
+from django.conf import settings
+import os
+import hmac
+import hashlib
+try:
+    import razorpay
+except Exception:
+    razorpay = None
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
@@ -356,6 +364,102 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'pending_payments': pending_payments,
             'total_revenue': float(total_revenue),
         })
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def create_razorpay_order(self, request):
+        """Create a Razorpay order and return order details and public key id."""
+        application_id = request.data.get('application')
+        amount = request.data.get('amount')
+
+        if not application_id or amount is None:
+            return Response({'error': 'application and amount are required'}, status=400)
+
+        try:
+            amount_int = int(float(amount) * 100)
+        except Exception:
+            return Response({'error': 'Invalid amount'}, status=400)
+
+        # Validate application ownership for non-admins
+        user = request.user
+        try:
+            application = UserApplication.objects.get(application_id=application_id)
+            if user.role != 'admin' and application.user != user:
+                return Response({'error': 'Permission denied for application'}, status=403)
+        except UserApplication.DoesNotExist:
+            return Response({'error': 'Application not found'}, status=404)
+
+        # Ensure razorpay is installed and keys configured
+        key_id = os.environ.get('RAZORPAY_KEY_ID') or getattr(settings, 'RAZORPAY_KEY_ID', None)
+        key_secret = os.environ.get('RAZORPAY_KEY_SECRET') or getattr(settings, 'RAZORPAY_KEY_SECRET', None)
+        if not key_id or not key_secret or razorpay is None:
+            return Response({'error': 'Razorpay not configured on server'}, status=500)
+
+        client = razorpay.Client(auth=(key_id, key_secret))
+        order_payload = {
+            'amount': amount_int,
+            'currency': 'INR',
+            'receipt': f'application_{application_id}',
+            'payment_capture': 1,
+        }
+        logger.info("Creating Razorpay order: user=%s application=%s payload=%s", getattr(user, 'username', user.id if hasattr(user,'id') else None), application_id, {k: v for k, v in order_payload.items() if k != 'amount' or True})
+        try:
+            order = client.order.create(order_payload)
+            logger.info('Razorpay order created: order_id=%s application=%s', order.get('id'), application_id)
+            return Response({'key_id': key_id, 'order': order})
+        except Exception as e:
+            # Log exception with traceback and include type for easier debugging
+            import traceback as _traceback
+            tb = _traceback.format_exc()
+            logger.error('Razorpay order creation failed for application=%s user=%s payload=%s error=%s\n%s',
+                         application_id,
+                         getattr(user, 'username', str(user)),
+                         order_payload,
+                         repr(e),
+                         tb)
+            # Return helpful diagnostic (avoid leaking secrets)
+            return Response({'error': 'Failed to create Razorpay order', 'details': str(e), 'type': type(e).__name__}, status=500)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def verify_razorpay_payment(self, request):
+        """Verify Razorpay payment signature and mark payment completed."""
+        payment_id = request.data.get('razorpay_payment_id')
+        order_id = request.data.get('razorpay_order_id')
+        signature = request.data.get('razorpay_signature')
+        application_id = request.data.get('application')
+
+        if not all([payment_id, order_id, signature, application_id]):
+            return Response({'error': 'Missing verification fields'}, status=400)
+
+        key_secret = os.environ.get('RAZORPAY_KEY_SECRET') or getattr(settings, 'RAZORPAY_KEY_SECRET', None)
+        if not key_secret:
+            return Response({'error': 'Razorpay secret not configured'}, status=500)
+
+        # Verify HMAC SHA256 signature
+        msg = f"{order_id}|{payment_id}"
+        generated_signature = hmac.new(key_secret.encode(), msg.encode(), hashlib.sha256).hexdigest()
+        if generated_signature != signature:
+            return Response({'error': 'Invalid signature'}, status=400)
+
+        try:
+            application = UserApplication.objects.get(application_id=application_id)
+            payment = Payment.objects.get(application=application)
+            payment.transaction_id = payment_id
+            payment.payment_status = 'Completed'
+            payment.payment_date = timezone.now()
+            payment.payment_method = 'Razorpay'
+            payment.save()
+
+            # Move the related application into Processing since payment completed
+            try:
+                application.status = 'Processing'
+                application.save()
+            except Exception:
+                logger.exception('Failed to update application status to Processing after payment')
+
+            return Response({'success': True, 'payment': PaymentSerializer(payment).data, 'application_status': application.status})
+        except Exception as e:
+            logger.exception('Error updating payment after Razorpay verification')
+            return Response({'error': 'Failed to update payment', 'details': str(e)}, status=500)
 
 
 class PaymentSettingsViewSet(viewsets.ModelViewSet):

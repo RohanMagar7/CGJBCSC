@@ -19,6 +19,7 @@ const Applications = lazy(() => import('./pages/user/Applications'));
 const ApplicationDetail = lazy(() => import('./pages/user/ApplicationDetail'));
 const Services = lazy(() => import('./pages/user/Services'));
 const GovSchemesInfo = lazy(() => import('./pages/user/GovSchemesInfo'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminApplications = lazy(() => import('./pages/admin/AdminApplications'));
 const AdminApplicationReview = lazy(() => import('./pages/admin/AdminApplicationReview'));
@@ -136,6 +137,7 @@ function App() {
                   <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
                   <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
                   <Route path="/gov-schemes" element={<ProtectedRoute><GovSchemesInfo /></ProtectedRoute>} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
                   <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />

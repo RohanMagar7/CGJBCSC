@@ -50,6 +50,9 @@ export const API_ENDPOINTS = {
   PAYMENT_SETTINGS: '/api/payment-settings/',
   PAYMENT_SETTINGS_DETAIL: (id) => `/api/payment-settings/${id}/`,
   PAYMENT_SETTINGS_ACTIVE: '/api/payment-settings/active/',
+  // Razorpay endpoints
+  RAZORPAY_CREATE_ORDER: '/api/payments/create_razorpay_order/',
+  RAZORPAY_VERIFY_PAYMENT: '/api/payments/verify_razorpay_payment/',
   // Government Schemes
   GOV_SCHEMES: '/api/gov-schemes/',
   GOV_SCHEME_DETAIL: (id) => `/api/gov-schemes/${id}/`,

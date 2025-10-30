@@ -10,6 +10,26 @@ class UserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
         }
 
+    def validate_email(self, value):
+        """Ensure email is unique (when provided)."""
+        if not value:
+            return value
+        qs = User.objects.filter(email__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value
+
+    def validate_phone_number(self, value):
+        """Ensure phone number is unique."""
+        qs = User.objects.filter(phone_number=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('A user with this phone number already exists.')
+        return value
+
     def create(self, validated_data):
         """
         Create a new user via public registration.

@@ -187,6 +187,9 @@ const apiService = {
     'payment-statistics',
     CACHE_TTL.SHORT
   ),
+  // Razorpay helper endpoints
+  createRazorpayOrder: (applicationId, amount) => axiosInstance.post(API_ENDPOINTS.RAZORPAY_CREATE_ORDER, { application: applicationId, amount }),
+  verifyRazorpayPayment: (payload) => axiosInstance.post(API_ENDPOINTS.RAZORPAY_VERIFY_PAYMENT, payload),
   
   // Payment Settings - Long cache (rarely changes)
   getPaymentSettings: withCache(

@@ -36,7 +36,7 @@ else:
         'localhost',
         '127.0.0.1',
         'cgjbcsc.onrender.com',
-        'cgjbcsc.netlify.app',
+        'https://chhatrapatigraphicandjaybhagwan.netlify.app',
     ]
 
 # ------------------------
@@ -187,6 +187,13 @@ STORAGES = {
     },
 }
 
+# ------------------------
+# Razorpay Configuration
+# ------------------------
+# Configure these via environment variables in production
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+
 # MEDIA_URL is not used - files are served directly from Dropbox via temporary URLs
 # No MEDIA_ROOT defined - no local media folder will be created
 
@@ -224,7 +231,7 @@ else:
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",  # IPv4 localhost
         "http://127.0.0.1:3000",
-        "https://cgjbcsc.netlify.app"  # Production frontend
+        "chhatrapatigraphicandjaybhagwan.netlify.app"  # Production frontend
     ]
 CORS_ALLOW_CREDENTIALS = True
 

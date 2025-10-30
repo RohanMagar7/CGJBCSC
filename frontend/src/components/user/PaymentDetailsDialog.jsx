@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,49 +11,75 @@ import {
   Paper,
   Alert,
   IconButton,
-  Chip,
-  Grid,
-  TextField,
 } from '@mui/material';
-import {
-  Close as CloseIcon,
-  ContentCopy,
-  CheckCircle,
-  QrCode2,
-  AccountBalance,
-  Phone,
-  Info,
-} from '@mui/icons-material';
+import { Close as CloseIcon, CheckCircle } from '@mui/icons-material';
 import apiService from '../../pages/services/apiService';
 
 export default function PaymentDetailsDialog({ open, onClose, application, payment }) {
-  const [paymentSettings, setPaymentSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState({});
+  const [razorpayLoading, setRazorpayLoading] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      fetchPaymentSettings();
-    }
-  }, [open]);
-
-  const fetchPaymentSettings = async () => {
-    try {
-      const response = await apiService.getActivePaymentSettings();
-      setPaymentSettings(response.data);
-    } catch (err) {
-      console.error('Failed to fetch payment settings:', err);
-    } finally {
-      setLoading(false);
-    }
+  const loadRazorpayScript = () => {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+      document.body.appendChild(script);
+    });
   };
 
-  const handleCopy = (text, field) => {
-    navigator.clipboard.writeText(text);
-    setCopied({ ...copied, [field]: true });
-    setTimeout(() => {
-      setCopied({ ...copied, [field]: false });
-    }, 2000);
+  const handleRazorpayPay = async () => {
+    if (!application || !payment) return;
+    setRazorpayLoading(true);
+    try {
+      const resp = await apiService.createRazorpayOrder(application.application_id, payment.amount);
+      const data = resp.data || resp;
+      const key_id = data.key_id;
+      const order = data.order || (data && data.id ? data : null);
+
+      if (!key_id || !order) throw new Error('Invalid order response from server');
+
+      await loadRazorpayScript();
+
+      const options = {
+        key: key_id,
+        amount: order.amount, // amount in paise
+        currency: order.currency || 'INR',
+        name: 'Sewa Portal',
+        description: `Payment for ${application.service_name}`,
+        order_id: order.id,
+        handler: async function (response) {
+          // Verify on server
+          try {
+            const verifyResp = await apiService.verifyRazorpayPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              application: application.application_id,
+            });
+            // If verification succeeded, close dialog and refresh
+            setRazorpayLoading(false);
+            onClose();
+          } catch (err) {
+            console.error('Razorpay verification failed', err);
+            setRazorpayLoading(false);
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: application.user_name || '',
+        },
+        theme: { color: '#667eea' },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Razorpay payment error:', err);
+      alert('Failed to initiate Razorpay payment: ' + (err?.message || 'unknown'));
+      setRazorpayLoading(false);
+    }
   };
 
   if (!payment || !application) return null;
@@ -127,134 +153,16 @@ export default function PaymentDetailsDialog({ open, onClose, application, payme
           </Box>
         </Paper>
 
-        {/* Payment Methods */}
-        {loading ? (
-          <Typography>Loading payment details...</Typography>
-        ) : paymentSettings ? (
-          <Box>
-            {/* UPI Payment */}
-            {(paymentSettings.upi_id || paymentSettings.upi_number) && (
-              <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, mb: 2, borderRadius: 2, bgcolor: '#f0f7ff' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mb: { xs: 1.5, sm: 2 } }}>
-                  <QrCode2 color="primary" sx={{ fontSize: { xs: 20, sm: 24 } }} />
-                  <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
-                    UPI Payment
-                  </Typography>
-                </Box>
-
-                {paymentSettings.upi_id && (
-                  <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                      UPI ID:
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: { xs: 1, sm: 1.5 }, 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        bgcolor: 'white',
-                        border: '2px solid',
-                        borderColor: 'primary.main',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                      }}
-                    >
-                      <Typography variant="body1" fontWeight="600" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, wordBreak: 'break-all' }}>
-                        {paymentSettings.upi_id}
-                      </Typography>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleCopy(paymentSettings.upi_id, 'upi_id')}
-                        color="primary"
-                      >
-                        {copied.upi_id ? <CheckCircle fontSize="small" /> : <ContentCopy fontSize="small" />}
-                      </IconButton>
-                    </Paper>
-                  </Box>
-                )}
-
-                {paymentSettings.upi_number && (
-                  <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                      UPI Mobile Number:
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: { xs: 1, sm: 1.5 }, 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        bgcolor: 'white',
-                        border: '2px solid',
-                        borderColor: 'primary.main',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-                        <Phone fontSize="small" sx={{ fontSize: { xs: 16, sm: 18 } }} />
-                        <Typography variant="body1" fontWeight="600" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>
-                          {paymentSettings.upi_number}
-                        </Typography>
-                      </Box>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleCopy(paymentSettings.upi_number, 'upi_number')}
-                        color="primary"
-                      >
-                        {copied.upi_number ? <CheckCircle fontSize="small" /> : <ContentCopy fontSize="small" />}
-                      </IconButton>
-                    </Paper>
-                  </Box>
-                )}
-
-                {/* QR Code Image */}
-                {paymentSettings.qr_code_url && (
-                  <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Scan QR Code to Pay:
-                    </Typography>
-                    <Paper 
-                      elevation={3} 
-                      sx={{ 
-                        p: 2, 
-                        display: 'inline-block',
-                        bgcolor: 'white',
-                      }}
-                    >
-                      <img 
-                        src={paymentSettings.qr_code_url} 
-                        alt="Payment QR Code" 
-                        style={{ 
-                          maxWidth: '250px', 
-                          height: 'auto',
-                          display: 'block',
-                        }} 
-                      />
-                    </Paper>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                      Use any UPI app to scan and pay
-                    </Typography>
-                  </Box>
-                )}
-              </Paper>
-            )}
-
-            {/* Contact Info */}
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              <Typography variant="body2">
-                For cash payment or other payment methods, please visit our office or contact support.
-              </Typography>
-            </Alert>
-          </Box>
-        ) : (
-          <Alert severity="info">
-            Please contact the admin for payment details.
-          </Alert>
-        )}
+        <Box sx={{ mb: 2 }}>
+          <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: '#f7fbff' }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Pay securely using Razorpay
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Click "Pay with Razorpay" to open the secure checkout and complete your payment. After successful payment you will be redirected and the payment will be verified automatically.
+            </Typography>
+          </Paper>
+        </Box>
 
         {/* Important Notes */}
         <Alert severity="warning" sx={{ mt: 3, borderRadius: 2 }}>
@@ -275,16 +183,21 @@ export default function PaymentDetailsDialog({ open, onClose, application, payme
         <Button onClick={onClose} variant="outlined" size="large">
           Close
         </Button>
-        <Button 
-          variant="contained" 
+        {/* Razorpay quick-pay button */}
+        <Button
+          variant="contained"
           size="large"
-          onClick={onClose}
+          color="secondary"
+          onClick={handleRazorpayPay}
+          disabled={razorpayLoading}
           sx={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #ff7a18 0%, #ff4e50 100%)',
           }}
         >
-          I've Made the Payment
+          {razorpayLoading ? 'Processing...' : 'Pay with Razorpay'}
         </Button>
+
+        {/* Close button retained for convenience */}
       </DialogActions>
     </Dialog>
   );

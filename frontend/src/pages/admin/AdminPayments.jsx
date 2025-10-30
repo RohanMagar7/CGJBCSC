@@ -95,7 +95,7 @@ export default function AdminPayments() {
   const [formData, setFormData] = useState({
     application: '',
     amount: '',
-    payment_method: 'Cash',
+    payment_method: 'Razorpay',
     payment_status: 'Pending',
     transaction_id: '',
     notes: '',
@@ -265,7 +265,7 @@ export default function AdminPayments() {
       setFormData({
         application: payment.application || '',
         amount: payment.amount || '',
-        payment_method: payment.payment_method || 'Cash',
+        payment_method: payment.payment_method || 'Razorpay',
         payment_status: payment.payment_status || 'Pending',
         transaction_id: payment.transaction_id || '',
         notes: payment.notes || '',
@@ -275,7 +275,7 @@ export default function AdminPayments() {
       setFormData({
         application: '',
         amount: '',
-        payment_method: 'Cash',
+        payment_method: 'Razorpay',
         payment_status: 'Pending',
         transaction_id: '',
         notes: '',
@@ -291,7 +291,7 @@ export default function AdminPayments() {
     setFormData({
       application: '',
       amount: '',
-      payment_method: 'Cash',
+      payment_method: 'Razorpay',
       payment_status: 'Pending',
       transaction_id: '',
       notes: '',
@@ -766,18 +766,9 @@ export default function AdminPayments() {
                   value={filterMethod}
                   label="Payment Method"
                   onChange={(e) => setFilterMethod(e.target.value)}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <AccountBalance />
-                    </InputAdornment>
-                  }
                 >
                   <MenuItem value="all">All Methods</MenuItem>
-                  <MenuItem value="Cash">Cash</MenuItem>
-                  <MenuItem value="E-Sewa">E-Sewa</MenuItem>
-                  <MenuItem value="Khalti">Khalti</MenuItem>
-                  <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                  <MenuItem value="Credit/Debit Card">Credit/Debit Card</MenuItem>
+                  <MenuItem value="Razorpay">Razorpay</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -981,11 +972,7 @@ export default function AdminPayments() {
                 onChange={handleInputChange}
                 label="Payment Method"
               >
-                <MenuItem value="Cash">Cash</MenuItem>
-                <MenuItem value="E-Sewa">E-Sewa</MenuItem>
-                <MenuItem value="Khalti">Khalti</MenuItem>
-                <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                <MenuItem value="Credit/Debit Card">Credit/Debit Card</MenuItem>
+                <MenuItem value="Razorpay">Razorpay</MenuItem>
               </Select>
             </FormControl>
 

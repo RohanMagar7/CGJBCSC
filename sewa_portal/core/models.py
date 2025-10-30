@@ -45,8 +45,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, editable=False)
     full_name = models.CharField(max_length=100, db_index=True)  # Index for name searches
     username = models.CharField(max_length=50, unique=True, db_index=True)  # Index for login
-    email = models.EmailField(blank=True, null=True, db_index=True)  # Index for email lookups
-    phone_number = models.CharField(max_length=15, db_index=True)  # Index for phone searches
+    # Make email and phone_number unique to prevent duplicate accounts
+    email = models.EmailField(blank=True, null=True, db_index=True, unique=True)  # Unique index for email lookups
+    phone_number = models.CharField(max_length=15, db_index=True, unique=True)  # Unique index for phone searches
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user', db_index=True)  # Index for role filtering
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True, db_index=True)  # Index for active user queries
@@ -181,15 +182,14 @@ class Payment(models.Model):
     )
     
     PAYMENT_METHOD_CHOICES = (
-        ('Cash', 'Cash'),
-        ('UPI', 'UPI'),
-        ('QR', 'QR Code'),
+        ('Razorpay', 'Razorpay'),
     )
     
     payment_id = models.AutoField(primary_key=True, editable=False)
     application = models.OneToOneField(UserApplication, on_delete=models.CASCADE, related_name='payment', db_index=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Payment amount in NPR", db_index=True)  # Index for amount queries
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='Cash', db_index=True)  # Index for method filtering
+    # Keep only Razorpay as the supported payment method and set the default accordingly.
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='Razorpay', db_index=True)  # Index for method filtering
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='Pending', db_index=True)  # Index for status filtering
     transaction_id = models.CharField(max_length=100, blank=True, null=True, help_text="External transaction ID from payment gateway", db_index=True)  # Index for transaction lookups
     payment_date = models.DateTimeField(blank=True, null=True, db_index=True)  # Index for date filtering

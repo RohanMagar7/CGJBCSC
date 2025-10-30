@@ -68,7 +68,7 @@ export default function Services() {
   
   // Form Data - Changed to object to track documents by required document ID
   const [documentFiles, setDocumentFiles] = useState({});
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentMethod, setPaymentMethod] = useState('Razorpay');
   const [notes, setNotes] = useState('');
 
   const steps = ['Select Service', 'Upload Documents', 'Confirm & Submit'];
@@ -95,7 +95,7 @@ export default function Services() {
     setSelectedService(service);
     setActiveStep(0);
     setDocumentFiles({});
-    setPaymentMethod('Cash');
+    setPaymentMethod('Razorpay');
     setNotes('');
     setOpenDialog(true);
   };
@@ -105,7 +105,7 @@ export default function Services() {
     setSelectedService(null);
     setActiveStep(0);
     setDocumentFiles({});
-    setPaymentMethod('Cash');
+    setPaymentMethod('Razorpay');
     setNotes('');
   };
 
@@ -181,6 +181,7 @@ export default function Services() {
       const applicationData = {
         user: user.user_id,
         service: selectedService.service_id,
+        // Create as a draft/pending-payment. We'll mark as Submitted after successful payment.
         status: 'Pending',
       };
 
@@ -202,27 +203,89 @@ export default function Services() {
         );
       }
 
-      // Step 3: Create payment record (pending status)
+      // Step 3: Create a payment record (status: Pending) so server has a Payment tied to this application
       const paymentData = {
         application: applicationId,
         amount: parseFloat(selectedService.price),
-        payment_method: paymentMethod,
+        payment_method: 'Razorpay',
         payment_status: 'Pending',
         notes: notes || `Payment for ${selectedService.service_name}`,
       };
 
       await apiService.createPayment(paymentData);
 
-      setSuccess(
-        `Application submitted successfully! Your application will be reviewed by admin. ` +
-        `Payment of ₹${selectedService.price} is required after approval. ` +
-        `Payment Method: ${paymentMethod}`
-      );
+      // Step 4: Create a Razorpay order on the server and open the checkout
+      const orderRes = await apiService.createRazorpayOrder(applicationId, parseFloat(selectedService.price));
+      const keyId = orderRes.data?.key_id || orderRes.data?.key || null;
+      const order = orderRes.data?.order;
 
-      setTimeout(() => {
-        handleCloseDialog();
-        navigate('/applications');
-      }, 3000);
+      // Load Razorpay checkout script dynamically
+      const loadScript = (src) =>
+        new Promise((resolve) => {
+          if (document.querySelector(`script[src="${src}"]`)) return resolve(true);
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+
+      const scriptLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay checkout script');
+      }
+
+      if (!order || !keyId) {
+        throw new Error('Failed to create Razorpay order');
+      }
+
+      const options = {
+        key: keyId,
+        amount: order.amount, // amount in paise
+        currency: order.currency || 'INR',
+        name: 'Sewa Portal',
+        description: `Payment for ${selectedService.service_name}`,
+        order_id: order.id,
+        handler: async function (response) {
+          // response contains razorpay_payment_id, razorpay_order_id, razorpay_signature
+          try {
+            setSubmitting(true);
+            const verifyPayload = {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              application: applicationId,
+            };
+
+            await apiService.verifyRazorpayPayment(verifyPayload);
+
+            // After successful verification, mark application as Processing (auto-progress since payment done)
+            await apiService.updateApplicationStatus(applicationId, 'Processing');
+
+            setSuccess('Payment successful and application submitted for review.');
+            setTimeout(() => {
+              handleCloseDialog();
+              navigate('/applications');
+            }, 2000);
+          } catch (err) {
+            console.error('Payment verification failed:', err);
+            setError(
+              err.response?.data?.error || err.response?.data?.detail || 'Payment verification failed. Please contact support.'
+            );
+          } finally {
+            setSubmitting(false);
+          }
+        },
+        prefill: {
+          name: user?.full_name || '',
+          email: user?.email || '',
+          contact: user?.phone_number || '',
+        },
+        theme: { color: '#667eea' },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -601,7 +664,7 @@ export default function Services() {
                       <ListItemIcon>
                         <Payment color="warning" fontSize="small" />
                       </ListItemIcon>
-                      <ListItemText primary={`4. Pay ₹${selectedService.price} after approval`} />
+                      <ListItemText primary={`4. Pay ₹${selectedService.price} during submission`} />
                     </ListItem>
                     <ListItem>
                       <ListItemIcon>
@@ -859,9 +922,7 @@ export default function Services() {
                       </InputAdornment>
                     }
                   >
-                    <MenuItem value="Cash">Cash (Pay at Office)</MenuItem>
-                    <MenuItem value="UPI">UPI</MenuItem>
-                    <MenuItem value="QR">QR Code</MenuItem>
+                    <MenuItem value="Razorpay">Razorpay (Online)</MenuItem>
                   </Select>
                 </FormControl>
 
@@ -881,9 +942,9 @@ export default function Services() {
                     Important:
                   </Typography>
                   <Typography variant="body2">
-                    • Payment of ₹{selectedService.price} will be required <strong>after admin approval</strong>
+                    • Payment of ₹{selectedService.price} is required now to complete your application submission.
                     <br />
-                    • You will be notified via email when your application is approved
+                    • After successful payment, your application will be submitted for admin review and you will be notified by email.
                     <br />• Processing time: {selectedService.processing_days} days after payment
                   </Typography>
                 </Alert>

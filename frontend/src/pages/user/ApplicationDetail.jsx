@@ -69,11 +69,7 @@ const ApplicationDetail = () => {
           const userPayment = paymentsRes.data.find(p => p.application === appRes.data.application_id);
           if (userPayment) {
             setPayment(userPayment);
-            
-            // Fetch active payment settings to get UPI ID and QR code
-            const settingsRes = await apiService.getActivePaymentSettings();
-            console.log('Payment Settings Response:', settingsRes.data);
-            setPaymentSettings(settingsRes.data);
+            // Razorpay is the only supported method now; no additional payment settings required here.
           }
         } catch (err) {
           console.error('Failed to fetch payment info:', err);
@@ -277,113 +273,16 @@ const ApplicationDetail = () => {
 
                 <Divider sx={{ my: 2 }} />
 
-                {/* Debug: Show if payment settings are loaded */}
-                {!paymentSettings && (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    Payment settings are being loaded...
-                  </Alert>
-                )}
-
-                {paymentSettings && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <Typography variant="body2" fontWeight="bold" gutterBottom>
-                      Available Payment Methods:
-                    </Typography>
-                    {paymentSettings.upi_id && (
-                      <Typography variant="body2">✓ UPI Payment Available</Typography>
-                    )}
-                    {paymentSettings.qr_code_url && (
-                      <Typography variant="body2">✓ QR Code Payment Available</Typography>
-                    )}
-                  </Alert>
-                )}
-
-                {/* Show UPI ID if available */}
-                {paymentSettings?.upi_id && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      UPI ID
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'grey.100',
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: '1.2rem',
-                        fontWeight: 'bold',
-                        color: 'primary.main'
-                      }}
-                    >
-                      {paymentSettings.upi_id}
-                    </Paper>
-                  </Box>
-                )}
-
-                {/* Show UPI Number if available */}
-                {paymentSettings?.upi_number && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      UPI Number
-                    </Typography>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'grey.100',
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: '1.2rem',
-                        fontWeight: 'bold',
-                        color: 'primary.main'
-                      }}
-                    >
-                      {paymentSettings.upi_number}
-                    </Paper>
-                  </Box>
-                )}
-
-                {/* Show QR Code if available */}
-                {paymentSettings?.qr_code_url && (
-                  <Box sx={{ mb: 2, textAlign: 'center' }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Scan QR Code to Pay
-                    </Typography>
-                    <Box
-                      component="img"
-                      src={paymentSettings.qr_code_url}
-                      alt="Payment QR Code"
-                      sx={{
-                        maxWidth: '300px',
-                        width: '100%',
-                        height: 'auto',
-                        mt: 2,
-                        border: '3px solid',
-                        borderColor: 'primary.main',
-                        borderRadius: 2,
-                        p: 2,
-                        bgcolor: 'white',
-                        boxShadow: 2
-                      }}
-                    />
-                  </Box>
-                )}
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Razorpay is the only supported payment method. Use the online "Pay with Razorpay" flow provided in the application/payment section to complete payment. After successful payment your transaction will be verified automatically.
+                </Alert>
 
                 <Alert severity="info">
                   <Typography variant="body2" fontWeight="bold" gutterBottom>
                     Payment Instructions:
                   </Typography>
                   <Typography variant="body2">
-                    {payment.payment_method === 'Cash' && 
-                      'Please visit our office during business hours (10 AM - 5 PM) to complete your payment at the counter.'
-                    }
-                    {payment.payment_method === 'UPI' && 
-                      'Complete your payment using any UPI app. After payment, the admin will verify your transaction.'
-                    }
-                    {payment.payment_method === 'QR' && 
-                      'Scan the QR code using any UPI app to complete your payment. The admin will verify your transaction.'
-                    }
+                    Use the online Razorpay checkout to complete payment. Once payment succeeds it will be verified automatically and your service will be processed.
                   </Typography>
                 </Alert>
               </CardContent>
