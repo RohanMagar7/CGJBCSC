@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
 import json
 
@@ -8,6 +9,25 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {
             'password': {'write_only': True},
+            # Provide clear, user-friendly uniqueness error messages
+            'username': {
+                'validators': [
+                    UniqueValidator(queryset=User.objects.all(), message="This username already exists.")
+                ]
+            },
+            'email': {
+                'required': False,
+                'allow_null': True,
+                'allow_blank': True,
+                'validators': [
+                    UniqueValidator(queryset=User.objects.all(), message="This email is already registered.")
+                ]
+            },
+            'phone_number': {
+                'validators': [
+                    UniqueValidator(queryset=User.objects.all(), message="This phone number is already registered.")
+                ]
+            }
         }
 
     def create(self, validated_data):
