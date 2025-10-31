@@ -35,7 +35,13 @@ const ForgotPassword = () => {
       const contentType = res.headers.get('content-type') || '';
       let data = {};
       if (contentType.includes('application/json')) {
-        data = await res.json();
+        try {
+          data = await res.json();
+        } catch (e) {
+          // Invalid JSON despite content-type header; fallback to text
+          const text = await res.text();
+          data = { detail: text };
+        }
       } else {
         // fallback to text for better error messages in production where HTML may be returned
         const text = await res.text();

@@ -59,7 +59,12 @@ const ResetPassword = () => {
       const contentType = res.headers.get('content-type') || '';
       let data = {};
       if (contentType.includes('application/json')) {
-        data = await res.json();
+        try {
+          data = await res.json();
+        } catch (e) {
+          const text = await res.text();
+          data = { detail: text };
+        }
       } else {
         const text = await res.text();
         try {
