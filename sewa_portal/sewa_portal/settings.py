@@ -23,13 +23,24 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 raw_allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS')
 if raw_allowed_hosts:
-    ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
+    # Allow developers to pass hosts with or without scheme (http:// or https://).
+    # Normalize to hostname-only values required by Django's ALLOWED_HOSTS.
+    def _normalize_host(h):
+        h = h.strip()
+        if h.startswith('http://'):
+            h = h[len('http://'):]
+        elif h.startswith('https://'):
+            h = h[len('https://'):]
+        return h.rstrip('/')
+
+    ALLOWED_HOSTS = [_normalize_host(h) for h in raw_allowed_hosts.split(',') if h.strip()]
 else:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
         'cgjbcsc.onrender.com',
-        'https://chhatrapatigraphicandjaybhagwan.netlify.app',
+        # ensure frontend hostnames are hostname-only (no scheme)
+        'chhatrapatigraphicandjaybhagwan.netlify.app',
     ]
 
 # ------------------------
@@ -238,7 +249,18 @@ SIMPLE_JWT = {
 # ------------------------
 raw_cors = os.environ.get('CORS_ALLOWED_ORIGINS')
 if raw_cors:
-    CORS_ALLOWED_ORIGINS = [u.strip() for u in raw_cors.split(',') if u.strip()]
+    # CORS needs full origins (including scheme). Allow specifying hosts without
+    # scheme by defaulting to https when none provided.
+    def _normalize_origin(u):
+        u = u.strip()
+        if not u:
+            return u
+        if u.startswith('http://') or u.startswith('https://'):
+            return u.rstrip('/')
+        # default to https for origins that omit scheme
+        return f'https://{u.rstrip("/")}'
+
+    CORS_ALLOWED_ORIGINS = [_normalize_origin(u) for u in raw_cors.split(',') if u.strip()]
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",  # Vite dev server
