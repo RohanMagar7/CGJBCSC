@@ -10,6 +10,7 @@ import {
   Link,
   Alert,
 } from '@mui/material';
+import { API_BASE_URL } from '../../config/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -25,15 +26,25 @@ const ForgotPassword = () => {
     setMessage(null);
 
     try {
-      const res = await fetch('/api/auth/password-reset/', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/password-reset/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
-      // Some servers may return an empty body on certain errors
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
+      // Read response safely: only parse JSON when content-type is JSON
+      const contentType = res.headers.get('content-type') || '';
+      let data = {};
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // fallback to text for better error messages in production where HTML may be returned
+        const text = await res.text();
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (e) {
+          data = { detail: text };
+        }
+      }
 
       if (!res.ok) throw new Error(data?.detail || `Request failed (status ${res.status})`);
 

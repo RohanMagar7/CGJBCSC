@@ -10,6 +10,7 @@ import {
   Link,
   Alert,
 } from '@mui/material';
+import { API_BASE_URL } from '../../config/api';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -50,14 +51,23 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/password-reset-confirm/', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/password-reset-confirm/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid, token, new_password: newPassword }),
       });
-
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
+      const contentType = res.headers.get('content-type') || '';
+      let data = {};
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (e) {
+          data = { detail: text };
+        }
+      }
 
       if (!res.ok) throw new Error(data?.detail || `Reset failed (status ${res.status})`);
 
