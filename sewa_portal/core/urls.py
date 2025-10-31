@@ -3,7 +3,8 @@ from rest_framework import routers
 from django.urls import path, include
 from .views import (UserViewSet, ServiceViewSet, UserApplicationViewSet, UserDocumentViewSet, 
                     FinalDocumentViewSet, AnnouncementViewSet, PaymentViewSet, RequiredDocumentViewSet,
-                    PaymentSettingsViewSet, GovSchemeViewSet, BackupViewSet)
+                    PaymentSettingsViewSet, GovSchemeViewSet, BackupViewSet,
+                    PasswordResetRequestView, PasswordResetConfirmView)
 
 router = routers.DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -20,4 +21,6 @@ router.register(r'backups', BackupViewSet, basename='backup')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password_reset'),
+    path('auth/password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 ]

@@ -133,6 +133,18 @@ const Login = () => {
               }}
             />
 
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Link component={RouterLink} to="/forgot-password" underline="hover" sx={{ fontSize: { xs: '0.875rem', sm: '0.95rem' } }}>
+                  Forgot password?
+                </Link>
+              </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+              <Link component={RouterLink} to="/forgot-password" underline="hover" variant="body2">
+                Forgot password?
+              </Link>
+            </Box>
+
             <Button
               type="submit"
               fullWidth

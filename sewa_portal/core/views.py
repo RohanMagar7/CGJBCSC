@@ -9,12 +9,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 from django.utils import timezone
+import os
 from django.db import models
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
                           PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer,
                           GovSchemeSerializer)
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail, EmailMessage
+from rest_framework.views import APIView
+from django.conf import settings
+from rest_framework.throttling import SimpleRateThrottle
 from .permissions import IsAdminUser, IsOwnerOrAdmin
 from .backup_manager import backup_manager
 
@@ -61,6 +69,97 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         return Response({'detail': 'You do not have permission to view this profile.'}, status=403)
+
+
+class PasswordResetRequestView(APIView):
+    """Accepts { "email": "user@example.com" } and sends a password reset link if a user exists.
+
+    The endpoint does not reveal whether an email exists (generic response), but for debugging
+    and usability this implementation logs attempts. The email contains a tokenized link the
+    frontend can use to complete the reset.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    # Throttle class applied to this view to limit password reset requests per IP
+    class PasswordResetRateThrottle(SimpleRateThrottle):
+        scope = 'password_reset'
+
+        def get_cache_key(self, request, view):
+            # Throttle by client IP address
+            ident = self.get_ident(request)
+            return self.cache_format % {
+                'scope': self.scope,
+                'ident': ident,
+            }
+
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        if not email:
+            return Response({'email': ['This field is required.']}, status=400)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Don't reveal that the email doesn't exist
+            logger.info('Password reset requested for non-existent email: %s', email)
+            return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+
+        # Generate token and uid
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Build reset link for frontend (frontend should implement route to accept uid & token)
+        frontend_base = getattr(settings, 'FRONTEND_URL', os.environ.get('FRONTEND_URL', 'http://localhost:5173'))
+        reset_path = f"/reset-password?uid={uid}&token={token}"
+        reset_link = frontend_base.rstrip('/') + reset_path
+
+        subject = 'Sewa Portal - Password reset request'
+        message = f"Hello {user.full_name or user.username},\n\nWe received a request to reset your password.\n\nClick the link below to reset your password (valid for a limited time):\n\n{reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSewa Portal Team"
+
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+            logger.info('Password reset email sent to %s', user.email)
+        except Exception as e:
+            logger.exception('Failed to send password reset email to %s: %s', user.email, e)
+            return Response({'detail': 'Failed to send reset email'}, status=500)
+
+        return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+
+
+class PasswordResetConfirmView(APIView):
+    """Accepts { "uid": "...", "token": "...", "new_password": "..." } and sets new password if token valid."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+
+        if not uid or not token or not new_password:
+            return Response({'detail': 'uid, token and new_password are required.'}, status=400)
+
+        try:
+            uid_decoded = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=uid_decoded)
+        except Exception:
+            return Response({'detail': 'Invalid uid/token.'}, status=400)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'detail': 'Invalid or expired token.'}, status=400)
+
+        # Set new password
+        try:
+            user.set_password(new_password)
+            user.save()
+            logger.info('Password reset successful for user id=%s', user.pk)
+            return Response({'detail': 'Password has been reset successfully.'})
+        except Exception as e:
+            logger.exception('Failed to reset password for user id=%s: %s', user.pk, e)
+            return Response({'detail': 'Failed to reset password.'}, status=500)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.prefetch_related('required_documents').all()  # Optimize with prefetch_related

@@ -36,7 +36,7 @@ else:
         'localhost',
         '127.0.0.1',
         'cgjbcsc.onrender.com',
-        'cgjbcsc.netlify.app',
+        'https://chhatrapatigraphicandjaybhagwan.netlify.app',
     ]
 
 # ------------------------
@@ -132,6 +132,10 @@ REST_FRAMEWORK = {
     )
 }
 
+# Throttle rates used by scoped throttles (e.g. password reset requests)
+REST_FRAMEWORK.setdefault('DEFAULT_THROTTLE_RATES', {})
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].setdefault('password_reset', os.environ.get('PASSWORD_RESET_THROTTLE', '5/hour'))
+
 # ------------------------
 # PASSWORD VALIDATION
 # ------------------------
@@ -194,13 +198,34 @@ STORAGES = {
 # ------------------------
 # EMAIL CONFIGURATION
 # ------------------------
+# Email configuration: default to SMTP but allow alternate backends via env vars.
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Sewa Portal <{EMAIL_HOST_USER}>')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD','onnf wucx rtok rvnr')
+# Use a safe default for DEFAULT_FROM_EMAIL to avoid 'None' in From header
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', os.environ.get('EMAIL_HOST_USER') or 'Sewa Portal <magarohan8@gmail.com>')
+
+# --- Anymail (SendGrid) integration (optional) ---------------------------------
+# If you set SENDGRID_API_KEY in the environment, we'll prefer Anymail's SendGrid
+# backend. This is recommended for production reliability. To enable, set:
+#   SENDGRID_API_KEY=your_sendgrid_api_key
+# Optionally also set DEFAULT_FROM_EMAIL to a verified sender for your provider.
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+if SENDGRID_API_KEY:
+    # Lazy add anymail to INSTALLED_APPS if not already present
+    if 'anymail' not in INSTALLED_APPS:
+        INSTALLED_APPS.append('anymail')
+
+    ANYMAIL = {
+        'SENDGRID_API_KEY': SENDGRID_API_KEY,
+    }
+
+    # Prefer Anymail's SendGrid backend when API key is present
+    EMAIL_BACKEND = 'anymail.backends.sendgrid.EmailBackend'
+# -----------------------------------------------------------------------------
 
 # ------------------------
 # SIMPLE JWT CONFIGURATION
@@ -224,7 +249,7 @@ else:
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",  # IPv4 localhost
         "http://127.0.0.1:3000",
-        "https://cgjbcsc.netlify.app"  # Production frontend
+        "https://chhatrapatigraphicandjaybhagwan.netlify.app"  # Production frontend
     ]
 CORS_ALLOW_CREDENTIALS = True
 

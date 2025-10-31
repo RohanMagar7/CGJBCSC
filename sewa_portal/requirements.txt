@@ -17,6 +17,9 @@ django-cors-headers==4.9.0
 django-storages==1.14.4
 dropbox==12.0.2
 
+# Email provider integration (Anymail + SendGrid)
+django-anymail
+
 # Core Python dependencies
 asgiref==3.10.0
 sqlparse==0.5.3
