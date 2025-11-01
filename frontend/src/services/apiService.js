@@ -84,6 +84,13 @@ const apiService = {
     cacheManager.invalidate(`application-${id}`);
     return axiosInstance.post(API_ENDPOINTS.APPLICATION_STATUS(id), { status, reject_reason: reason });
   },
+  // Resubmit a previously rejected application (owner or admin)
+  resubmitApplication: (id, validateDocuments = true) => {
+    cacheManager.invalidate(/^applications/);
+    cacheManager.invalidate(`application-${id}`);
+    // DRF action URL: /api/applications/{id}/resubmit/
+    return axiosInstance.post(`${API_ENDPOINTS.APPLICATION_DETAIL(id)}resubmit/`, { validate_documents: validateDocuments });
+  },
   
   // Documents - No cache (file uploads)
   getDocuments: () => axiosInstance.get(API_ENDPOINTS.DOCUMENTS),

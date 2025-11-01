@@ -20,6 +20,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Select,
+  MenuItem,
   Chip,
 } from '@mui/material';
 import {
@@ -49,6 +51,9 @@ const ApplicationDetail = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [missingRequiredDocs, setMissingRequiredDocs] = useState([]);
+  const [selectedRequiredDocId, setSelectedRequiredDocId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -114,11 +119,57 @@ const ApplicationDetail = () => {
     
     setUploading(true);
     try {
-      await apiService.uploadDocument(id, selectedFile);
-      setUploadDialogOpen(false);
-      setSelectedFile(null);
-      fetchData(); // Refresh data
-      setError('');
+      // remember previous status to decide whether to auto-resubmit
+      const previousStatus = application?.status;
+
+      // determine document name and required_document id if user selected one
+      let documentName = selectedFile.name;
+      let requiredDocumentId = null;
+      if (selectedRequiredDocId) {
+        requiredDocumentId = selectedRequiredDocId;
+        const rd = missingRequiredDocs.find(r => r.id === selectedRequiredDocId);
+        if (rd && rd.document_name) documentName = rd.document_name;
+      }
+
+  await apiService.uploadDocument(id, selectedFile, documentName, requiredDocumentId);
+  setUploadDialogOpen(false);
+  setSelectedFile(null);
+  setMissingRequiredDocs([]);
+  setSelectedRequiredDocId(null);
+  setError('');
+
+      // If the application was previously rejected, attempt auto-resubmit
+        if (previousStatus === 'Rejected') {
+        setResubmitting(true);
+        try {
+          if (typeof apiService.resubmitApplication !== 'function') {
+            throw new Error('resubmit API not available');
+          }
+          await apiService.resubmitApplication(application.application_id, true);
+          // refresh data after resubmit
+          await fetchData();
+          // show brief success message
+          setError('');
+          // optional: small notification - using alert for now
+          alert('Document uploaded and application resubmitted successfully.');
+        } catch (err) {
+          console.error('Auto-resubmit error:', err);
+          const resp = err.response;
+          if (resp && resp.data && resp.data.missing_documents) {
+            setError(`Missing documents: ${resp.data.missing_documents.join(', ')}`);
+          } else if (resp && resp.data && resp.data.detail) {
+            setError(resp.data.detail);
+          } else {
+            setError('Document uploaded but failed to resubmit application');
+          }
+        } finally {
+          setResubmitting(false);
+        }
+        return;
+      }
+
+      // Otherwise simply refresh data
+      fetchData();
     } catch (err) {
       setError('Failed to upload document');
       console.error(err);
@@ -193,6 +244,7 @@ const ApplicationDetail = () => {
                   <ListItemText
                     primary="Status"
                     secondary={<StatusBadge status={application.status} />}
+                    secondaryTypographyProps={{ component: 'span' }}
                   />
                 </ListItem>
                 <ListItem>
@@ -399,7 +451,8 @@ const ApplicationDetail = () => {
                 <Typography variant="h6">
                   Uploaded Documents
                 </Typography>
-                {application.status !== 'Completed' && (
+                  <Box>
+                    {application.status !== 'Completed' && (
                   <Button
                     variant="contained"
                     size="small"
@@ -408,7 +461,68 @@ const ApplicationDetail = () => {
                   >
                     Upload
                   </Button>
-                )}
+                    )}
+
+                    {/* Show Resubmit when application was rejected */}
+                    {application.status === 'Rejected' && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                        sx={{ ml: 1 }}
+                        onClick={async () => {
+                          setResubmitting(true);
+                          try {
+                            // Check for mandatory required documents missing for this service
+                            const rdRes = await apiService.getRequiredDocumentsByService(application.service);
+                            const requiredDocs = (rdRes.data || []).filter(rd => rd.is_mandatory);
+
+                            // Determine which required docs are not present in uploaded documents
+                            const uploaded = application.documents || [];
+                            const missing = requiredDocs.filter(rd => {
+                              return !uploaded.some(d => {
+                                // d.required_document may be an id or object depending on serializer
+                                if (!d) return false;
+                                if (d.required_document && typeof d.required_document === 'object') {
+                                  return d.required_document.id === rd.id;
+                                }
+                                return d.required_document === rd.id;
+                              });
+                            });
+
+                            if (missing.length > 0) {
+                              // Prompt user to upload missing docs first
+                              setMissingRequiredDocs(missing);
+                              setSelectedRequiredDocId(missing[0].id);
+                              setUploadDialogOpen(true);
+                              // keep resubmitting false here; auto-resubmit will run after upload
+                            } else {
+                              // No missing docs: call resubmit directly
+                              await apiService.resubmitApplication(application.application_id, true);
+                              setError('');
+                              await fetchData();
+                              alert('Application resubmitted successfully.');
+                            }
+                          } catch (err) {
+                            console.error('Resubmit error:', err);
+                            const resp = err.response;
+                            if (resp && resp.data && resp.data.missing_documents) {
+                              setError(`Missing documents: ${resp.data.missing_documents.join(', ')}`);
+                            } else if (resp && resp.data && resp.data.detail) {
+                              setError(resp.data.detail);
+                            } else {
+                              setError('Failed to resubmit application');
+                            }
+                          } finally {
+                            setResubmitting(false);
+                          }
+                        }}
+                        disabled={resubmitting}
+                      >
+                        {resubmitting ? 'Resubmitting...' : 'Resubmit'}
+                      </Button>
+                    )}
+                  </Box>
               </Box>
               <Divider sx={{ mb: 2 }} />
               
@@ -500,10 +614,27 @@ const ApplicationDetail = () => {
       </Grid>
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+  <Dialog open={uploadDialogOpen} onClose={() => { setUploadDialogOpen(false); setMissingRequiredDocs([]); setSelectedRequiredDocId(null); }} maxWidth="sm" fullWidth>
         <DialogTitle>Upload Document</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
+            {missingRequiredDocs.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Missing required documents detected — pick which one you're uploading now
+                </Typography>
+                <Select
+                  fullWidth
+                  value={selectedRequiredDocId || ''}
+                  onChange={(e) => setSelectedRequiredDocId(e.target.value)}
+                >
+                  {missingRequiredDocs.map((rd) => (
+                    <MenuItem key={rd.id} value={rd.id}>{rd.document_name}</MenuItem>
+                  ))}
+                </Select>
+              </Box>
+            )}
+
             <input
               accept=".pdf,.jpg,.jpeg,.png"
               style={{ display: 'none' }}
@@ -534,7 +665,7 @@ const ApplicationDetail = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => { setUploadDialogOpen(false); setMissingRequiredDocs([]); setSelectedRequiredDocId(null); }}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleUpload}

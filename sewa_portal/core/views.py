@@ -302,6 +302,67 @@ Sewa Portal
         
         return Response({'success':True,'status':app.status})
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsOwnerOrAdmin])
+    def resubmit(self, request, pk=None):
+        """Allow an application owner to resubmit a previously rejected application.
+
+        This will:
+        - only allow the application owner (or admin) to call it
+        - only operate when current status is 'Rejected'
+        - optionally validate that all mandatory RequiredDocument items have at least one uploaded UserDocument
+        - clear reject_reason and set status to 'Pending'
+        """
+        app = self.get_object()
+        user = request.user
+
+        logger.info("Resubmit attempt: app_id=%s by user=%s (role=%s)", app.application_id, getattr(user, 'username', None), getattr(user, 'role', None))
+
+        # Ownership enforced by permission_classes, but double-check
+        if user.role != 'admin' and app.user != user:
+            logger.warning("Resubmit permission denied: app_id=%s attempted_by=%s", app.application_id, getattr(user, 'username', None))
+            return Response({'detail': 'You do not have permission to resubmit this application.'}, status=403)
+
+        if app.status != 'Rejected':
+            logger.info("Resubmit not allowed - status not Rejected: app_id=%s status=%s", app.application_id, app.status)
+            return Response({'detail': 'Only rejected applications can be resubmitted.'}, status=400)
+
+        # Optional: verify mandatory documents are present
+        validate_docs = request.data.get('validate_documents', True)
+        # Add diagnostic logging: record the validate flag, number of uploaded user documents
+        try:
+            existing_docs_count = UserDocument.objects.filter(application=app).count()
+        except Exception:
+            existing_docs_count = 'unknown'
+        logger.info("Resubmit request keys=%s validate_documents=%s existing_uploaded_docs=%s", list(request.data.keys()), validate_docs, existing_docs_count)
+        missing_docs = []
+        if validate_docs:
+            required_docs = RequiredDocument.objects.filter(service=app.service, is_mandatory=True)
+            for rd in required_docs:
+                # Check if a UserDocument exists for this application and required_document
+                exists = UserDocument.objects.filter(application=app, required_document=rd).exists()
+                if not exists:
+                    missing_docs.append(rd.document_name)
+
+            if missing_docs:
+                logger.info("Resubmit blocked - missing docs for app_id=%s: %s", app.application_id, missing_docs)
+                return Response({'detail': 'Missing mandatory documents', 'missing_documents': missing_docs}, status=400)
+
+        # Clear reject reason and set status to Pending
+        try:
+            app.status = 'Pending'
+            app.reject_reason = ''
+            app.updated_at = timezone.now()
+            app.save()
+        except Exception as e:
+            logger.exception('Failed to resubmit application id=%s: %s', app.application_id, e)
+            return Response({'detail': 'Failed to resubmit application'}, status=500)
+
+        logger.info("Resubmit successful: app_id=%s by user=%s", app.application_id, getattr(user, 'username', None))
+
+        # Return the updated application
+        serializer = UserApplicationSerializer(app, context={'request': request})
+        return Response({'success': True, 'application': serializer.data})
+
 class UserDocumentViewSet(viewsets.ModelViewSet):
     queryset = UserDocument.objects.select_related('application', 'application__user', 'application__service', 'required_document').all()  # Optimize with select_related
     serializer_class = UserDocumentSerializer

@@ -3,6 +3,7 @@ from pathlib import Path
 import dj_database_url
 from datetime import timedelta
 from dotenv import load_dotenv
+    
 
 # Load .env for local development
 load_dotenv()
