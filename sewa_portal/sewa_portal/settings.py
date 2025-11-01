@@ -40,7 +40,7 @@ else:
         '127.0.0.1',
         'cgjbcsc.onrender.com',
         # ensure frontend hostnames are hostname-only (no scheme)
-        'chhatrapatigraphicandjaybhagwan.netlify.app',
+        'jaybhagwancomputers.netlify.app',
     ]
 
 # ------------------------
@@ -267,7 +267,7 @@ else:
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",  # IPv4 localhost
         "http://127.0.0.1:3000",
-        "https://chhatrapatigraphicandjaybhagwan.netlify.app"  # Production frontend
+        "https://jaybhagwancomputers.netlify.app"  # Production frontend
     ]
 CORS_ALLOW_CREDENTIALS = True
 
