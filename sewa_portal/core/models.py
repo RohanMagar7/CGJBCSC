@@ -360,3 +360,76 @@ class GovScheme(models.Model):
     def id(self):
         """Alias to match frontend expectations (scheme.id)"""
         return self.scheme_id
+
+
+# -------------------------
+# Gopinath Scheme Application
+# -------------------------
+class GopinathApplication(models.Model):
+    APPLICATION_STATUS = (
+        ('Submitted', 'Submitted'),
+        ('Under Review', 'Under Review'),
+        ('Accepted', 'Accepted'),
+        ('Rejected', 'Rejected'),
+    )
+
+    app_id = models.AutoField(primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+
+    # Personal Details
+    full_name = models.CharField(max_length=200, db_index=True)
+    dob = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    mobile = models.CharField(max_length=15, db_index=True)
+    email = models.EmailField(blank=True, null=True)
+    aadhaar = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    passport_photo = models.FileField(upload_to='schemes/gopinath/photos/', validators=[validate_file], null=True, blank=True)
+
+    # Educational Details
+    college_name = models.CharField(max_length=255, blank=True)
+    college_address = models.TextField(blank=True)
+    course = models.CharField(max_length=200, blank=True)
+    study_year = models.CharField(max_length=50, blank=True)
+    college_id_number = models.CharField(max_length=100, blank=True)
+    college_id_card = models.FileField(upload_to='schemes/gopinath/college_id/', validators=[validate_file], null=True, blank=True)
+
+    # Residence Details
+    current_address = models.TextField(blank=True)
+    native_place = models.CharField(max_length=255, blank=True)
+    residence_type = models.CharField(max_length=50, blank=True)  # hostel/room/rented
+    residence_name_address = models.TextField(blank=True)
+
+    # Scheme Details
+    ration_card_number = models.CharField(max_length=100, blank=True)
+    ration_card_type = models.CharField(max_length=50, blank=True)
+    veg_nonveg = models.CharField(max_length=20, blank=True)
+    ration_card_file = models.FileField(upload_to='schemes/gopinath/ration_card/', validators=[validate_file], null=True, blank=True)
+
+    # Bank Details
+    bank_name = models.CharField(max_length=200, blank=True)
+    branch_name = models.CharField(max_length=200, blank=True)
+    account_number = models.CharField(max_length=64, blank=True)
+    ifsc = models.CharField(max_length=20, blank=True)
+    bank_passbook = models.FileField(upload_to='schemes/gopinath/bank_passbook/', validators=[validate_file], null=True, blank=True)
+
+    # Other attachments
+    aadhaar_file = models.FileField(upload_to='schemes/gopinath/aadhaar/', validators=[validate_file], null=True, blank=True)
+    fee_residence_proof = models.FileField(upload_to='schemes/gopinath/proofs/', validators=[validate_file], null=True, blank=True)
+    last_marksheet = models.FileField(upload_to='schemes/gopinath/marksheets/', validators=[validate_file], null=True, blank=True)
+
+    # Declarations
+    declaration = models.BooleanField(default=False)
+    signature = models.FileField(upload_to='schemes/gopinath/signatures/', validators=[validate_file], null=True, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=20, choices=APPLICATION_STATUS, default='Submitted', db_index=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['mobile', 'aadhaar']),
+            models.Index(fields=['-submitted_at']),
+        ]
+
+    def __str__(self):
+        return f"GopinathApplication #{self.app_id} - {self.full_name}"

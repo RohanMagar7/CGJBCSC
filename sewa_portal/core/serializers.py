@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import GopinathApplication
 import json
 
 class UserSerializer(serializers.ModelSerializer):
@@ -280,3 +281,33 @@ try:
 except Exception:
     # If import fails for any reason (shouldn't in normal runtime), skip binding
     pass
+
+
+class GopinathApplicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GopinathApplication
+        fields = [
+            'app_id', 'user',
+            # Personal
+            'full_name', 'dob', 'gender', 'mobile', 'email', 'aadhaar', 'passport_photo',
+            # Education
+            'college_name', 'college_address', 'course', 'study_year', 'college_id_number', 'college_id_card',
+            # Residence
+            'current_address', 'native_place', 'residence_type', 'residence_name_address',
+            # Scheme
+            'ration_card_number', 'ration_card_type', 'veg_nonveg', 'ration_card_file',
+            # Bank
+            'bank_name', 'branch_name', 'account_number', 'ifsc', 'bank_passbook',
+            # Other docs
+            'aadhaar_file', 'fee_residence_proof', 'last_marksheet',
+            # Declaration
+            'declaration', 'signature', 'submitted_at', 'status'
+        ]
+        read_only_fields = ['app_id', 'submitted_at', 'status']
+
+    def create(self, validated_data):
+        # Attach the currently authenticated user if available in context
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        return super().create(validated_data)

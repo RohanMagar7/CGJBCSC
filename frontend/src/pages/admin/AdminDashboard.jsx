@@ -23,6 +23,12 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
+  Stack,
 } from '@mui/material';
 import {
   People,
@@ -48,6 +54,10 @@ const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [gopinathApps, setGopinathApps] = useState([]);
+  const [gopiDetailOpen, setGopiDetailOpen] = useState(false);
+  const [selectedGopi, setSelectedGopi] = useState(null);
+  const [gopiLoading, setGopiLoading] = useState(false);
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -60,14 +70,16 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [appsRes, usersRes, servicesRes] = await Promise.all([
+      const [appsRes, usersRes, servicesRes, gopiRes] = await Promise.all([
         apiService.getApplications(),
         apiService.getUsers(),
         apiService.getServices(),
+        apiService.getGopinathApplications?.(),
       ]);
       setApplications(appsRes.data);
       setUsers(usersRes.data);
       setServices(servicesRes.data);
+      setGopinathApps(gopiRes?.data || []);
         // Try to fetch gov schemes count for admin quick action (non-blocking)
         try {
           const schemesRes = await apiService.getGovSchemes?.();
@@ -127,6 +139,26 @@ const AdminDashboard = () => {
   };
 
   const handleCloseSnackbar = () => {
+
+  // Open a dialog showing full Gopinath application details
+  const openGopiDetail = async (appId) => {
+    try {
+      setGopiLoading(true);
+      const res = await apiService.getGopinathApplication?.(appId);
+      setSelectedGopi(res?.data || null);
+      setGopiDetailOpen(true);
+    } catch (err) {
+      console.error('Failed to load Gopinath application detail:', err);
+      setSnackbar({ open: true, message: 'Failed to load application details', severity: 'error' });
+    } finally {
+      setGopiLoading(false);
+    }
+  };
+
+  const closeGopiDetail = () => {
+    setGopiDetailOpen(false);
+    setSelectedGopi(null);
+  };
     setSnackbar({ ...snackbar, open: false });
   };
 
@@ -166,6 +198,14 @@ const AdminDashboard = () => {
       bgColor: alpha('#4caf50', 0.1),
       change: '+3',
       link: '/admin/services',
+    },
+    {
+      title: 'Gopinath Apps',
+      value: gopinathApps.length,
+      icon: <Description sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gopinath-applications',
     },
   ];
 
@@ -224,6 +264,15 @@ const AdminDashboard = () => {
       bgColor: alpha('#2196f3', 0.08),
       link: '/admin/gov-schemes',
       count: schemes.length,
+    },
+    {
+      title: 'Gopinath Applications',
+      description: 'Review and manage Gopinath scheme registrations',
+      icon: <Description sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gopinath-applications',
+      count: gopinathApps.length,
     },
   ];
 
@@ -400,6 +449,68 @@ const AdminDashboard = () => {
               </Grid>
             ))}
           </Grid>
+        </Box>
+
+        {/* Recent Gopinath Applications */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Recent Gopinath Applications
+            </Typography>
+            <Button
+              variant="outlined"
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/admin/gopinath-applications')}
+              sx={{ borderRadius: 2 }}
+            >
+              View All
+            </Button>
+          </Box>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: alpha('#667eea', 0.03) }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>App ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Applicant</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Mobile</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Submitted</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(!gopinathApps || gopinathApps.length === 0) ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                        <Description sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">No Gopinath applications yet</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    gopinathApps.slice(0, 6).map((app) => (
+                      <TableRow key={app.app_id} hover>
+                        <TableCell><Chip label={`#${app.app_id}`} size="small" /></TableCell>
+                        <TableCell>{app.full_name}</TableCell>
+                        <TableCell>{app.mobile}</TableCell>
+                        <TableCell>{app.email || '—'}</TableCell>
+                        <TableCell>
+                          {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell><StatusBadge status={app.status} /></TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" title="View details" onClick={() => openGopiDetail(app.app_id)}>
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Card>
         </Box>
 
         {/* Database Backup Section */}
@@ -617,6 +728,69 @@ const AdminDashboard = () => {
       </Container>
 
       {/* Snackbar for notifications */}
+      <Dialog open={gopiDetailOpen} onClose={closeGopiDetail} fullWidth maxWidth="md">
+        <DialogTitle>Gopinath Application #{selectedGopi?.app_id || ''}</DialogTitle>
+        <DialogContent dividers>
+          {gopiLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : selectedGopi ? (
+            <Box>
+              <Typography variant="h6" fontWeight={700}>Personal</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}><Typography><strong>Name:</strong> {selectedGopi.full_name}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Mobile:</strong> {selectedGopi.mobile}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>DOB:</strong> {selectedGopi.dob || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Gender:</strong> {selectedGopi.gender || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>Address:</strong> {selectedGopi.current_address || selectedGopi.residence_address || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>Education / College</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}><Typography><strong>College:</strong> {selectedGopi.college_name || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Course / Year:</strong> {`${selectedGopi.course || '—'} / ${selectedGopi.study_year || '—'}`}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>College ID:</strong> {selectedGopi.college_id_number || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>Identification</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}><Typography><strong>Aadhaar:</strong> {selectedGopi.aadhaar || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Email:</strong> {selectedGopi.email || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>Documents</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Stack spacing={1} sx={{ mb: 2 }}>
+                {['passport_photo','college_id_card','ration_card_file','aadhaar_file','bank_passbook','fee_residence_proof','last_marksheet','signature'].map((k) => (
+                  selectedGopi[k] ? (
+                    <Link key={k} href={selectedGopi[k]} target="_blank" rel="noreferrer" underline="none">
+                      <Button variant="outlined">View {k.replace(/_/g,' ')}</Button>
+                    </Link>
+                  ) : null
+                ))}
+              </Stack>
+
+              <Grid container spacing={1}>
+                <Grid item xs={12} sm={6}><Typography><strong>Status:</strong> {selectedGopi.status}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Submitted:</strong> {selectedGopi.submitted_at ? new Date(selectedGopi.submitted_at).toLocaleString() : '—'}</Typography></Grid>
+              </Grid>
+            </Box>
+          ) : (
+            <Typography>No details available</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeGopiDetail}>Close</Button>
+          <Button variant="contained" onClick={() => {
+            if (selectedGopi) navigate(`/admin/gopinath-applications/${selectedGopi.app_id}`);
+            closeGopiDetail();
+          }}>Open in Review Page</Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

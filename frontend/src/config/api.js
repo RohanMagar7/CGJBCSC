@@ -58,4 +58,7 @@ export const API_ENDPOINTS = {
   BACKUP_CREATE: '/api/backups/create/',
   BACKUP_LIST: '/api/backups/list/',
   BACKUP_CLEANUP: '/api/backups/cleanup/',
+  // Gopinath Scheme Applications
+  GOPINATH_APPLICATIONS: '/api/gopinath-applications/',
+  GOPINATH_APPLICATION_DETAIL: (id) => `/api/gopinath-applications/${id}/`,
 };

@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 from django.utils import timezone
 import os
 from django.db import models
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme, GopinathApplication
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
                           PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer,
-                          GovSchemeSerializer)
+                          GovSchemeSerializer, GopinathApplicationSerializer)
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -499,6 +499,55 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'message': 'Payment marked as completed',
             'payment': PaymentSerializer(payment).data
         })
+
+
+class GopinathApplicationViewSet(viewsets.ModelViewSet):
+    """CRUD for Gopinath Scheme applications. Users can create their own application; admins can list and manage."""
+    queryset = GopinathApplication.objects.all().select_related('user')
+    serializer_class = GopinathApplicationSerializer
+
+    def get_permissions(self):
+        # Allow anyone authenticated to create; listing/updating restricted to admin or owner
+        if self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        # attach user if available
+        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
+
+    def create(self, request, *args, **kwargs):
+        """Override create to log incoming multipart data (keys + uploaded files) and serializer errors for easier debugging.
+
+        Returns the usual 201 on success or 400 with serializer errors.
+        """
+        # Log non-sensitive data: keys and file names/sizes (avoid logging file contents or passwords)
+        try:
+            keys = list(request.data.keys())
+        except Exception:
+            keys = None
+
+        file_info = {}
+        try:
+            for k, f in request.FILES.items():
+                file_info[k] = {'name': getattr(f, 'name', None), 'size': getattr(f, 'size', None), 'content_type': getattr(f, 'content_type', None)}
+        except Exception:
+            file_info = 'unavailable'
+
+        logger.info("GopinathApplication create attempt by=%s keys=%s files=%s", getattr(request.user, 'username', None), keys, file_info)
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            # Log validation errors to server logs for diagnostics
+            logger.error("GopinathApplication validation failed for user=%s errors=%s", getattr(request.user, 'username', None), serializer.errors)
+            return Response(serializer.errors, status=400)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        logger.info("GopinathApplication created app_id=%s by=%s", serializer.data.get('app_id'), getattr(request.user, 'username', None))
+        return Response(serializer.data, status=201, headers=headers)
     
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def statistics(self, request):
@@ -516,6 +565,64 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'pending_payments': pending_payments,
             'total_revenue': float(total_revenue),
         })
+
+
+class GopinathApplicationViewSet(viewsets.ModelViewSet):
+    """CRUD for Gopinath Scheme applications. Users can create their own application; admins can list and manage."""
+    queryset = GopinathApplication.objects.all().select_related('user')
+    serializer_class = GopinathApplicationSerializer
+
+    def get_permissions(self):
+        # Allow anyone authenticated to create; listing/updating restricted to admin or owner
+        if self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        # attach user if available
+        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
+    def update_status(self, request, pk=None):
+        """Admin action to update the status of a Gopinath application.
+
+        POST payload: { "status": "Accepted" | "Rejected" | "Under Review", "reject_reason": "..." }
+        When Accepted, send a notification email to the applicant (if email present).
+        """
+        app = self.get_object()
+        status = request.data.get('status')
+        reason = request.data.get('reject_reason', '')
+
+        valid_statuses = [s[0] for s in GopinathApplication.APPLICATION_STATUS]
+        if status not in valid_statuses:
+            return Response({'error': 'Invalid status'}, status=400)
+
+        app.status = status
+        if status == 'Rejected':
+            app.reject_reason = reason
+        app.save()
+
+        # Send email/notification when accepted or rejected
+        try:
+            if status == 'Accepted':
+                subject = 'आपली नोंदणी मंजूर झाली आहे - गोपीनाथ योजना'
+                body = f"नमस्कार {app.full_name},\n\nआपली गोपीनाथ योजना साठी केलेली नोंदणी मंजूर करण्यात आली आहे.\n\nआम्ही लवकरच पुढील सूचना पाठवू.\n\nधन्यवाद,\nगोपीनाथ योजना टीम"
+                if app.email:
+                    # Email sending is logged (suppressed or routed by actual email backend)
+                    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.email], fail_silently=True)
+                    logger.info("GopinathApplication accepted email sent to=%s app_id=%s", app.email, app.app_id)
+            elif status == 'Rejected' and app.email:
+                subject = 'आपली नोंदणी नाकारण्यात आली - गोपीनाथ योजना'
+                body = f"नमस्कार {app.full_name},\n\nदुर्दैवाने, आपली नोंदणी नाकारण्यात आली आहे. कारण: {reason}\n\nआपण सुधारणा करून पुन्हा सबमिट करू शकता.\n\nधन्यवाद,\nगोपीनाथ टीम"
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.email], fail_silently=True)
+                logger.info("GopinathApplication rejection email sent to=%s app_id=%s reason=%s", app.email, app.app_id, reason)
+        except Exception as e:
+            logger.exception('Failed to send notification email for GopinathApplication id=%s: %s', app.app_id, e)
+
+        return Response({'success': True, 'status': app.status})
+
 
 
 class PaymentSettingsViewSet(viewsets.ModelViewSet):

@@ -230,6 +230,20 @@ const apiService = {
   listBackups: () => axiosInstance.get(API_ENDPOINTS.BACKUP_LIST),
   cleanupBackups: (keepCount = 7) => axiosInstance.post(API_ENDPOINTS.BACKUP_CLEANUP, { keep_count: keepCount }),
   
+  // Gopinath Scheme Applications
+  createGopinathApplication: (formData) => {
+    // formData should be FormData with files attached
+    return axiosInstance.post(API_ENDPOINTS.GOPINATH_APPLICATIONS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getGopinathApplications: () => axiosInstance.get(API_ENDPOINTS.GOPINATH_APPLICATIONS),
+  getGopinathApplication: (id) => axiosInstance.get(API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)),
+  updateGopinathApplicationStatus: (id, status, reason = '') => {
+    return axiosInstance.post(`${API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)}update_status/`, { status, reject_reason: reason });
+  },
+  deleteGopinathApplication: (id) => axiosInstance.delete(API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)),
+  
   // Cache management utilities
   clearCache: () => cacheManager.clear(),
   invalidateCache: (pattern) => cacheManager.invalidate(pattern),

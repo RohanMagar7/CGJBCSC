@@ -238,6 +238,12 @@ const apiService = {
   // Cache management utilities
   clearCache: () => cacheManager.clear(),
   invalidateCache: (pattern) => cacheManager.invalidate(pattern),
+  // Gopinath Scheme Applications (pages-local helper)
+  createGopinathApplication: (formData) => {
+    return axiosInstance.post(API_ENDPOINTS.GOPINATH_APPLICATIONS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 export { apiService };
