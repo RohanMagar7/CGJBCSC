@@ -281,6 +281,21 @@ if os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True':
 
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF trusted origins: allow the frontend origin(s) that may POST to this API.
+# Add additional origins via the CSRF_TRUSTED_ORIGINS env var if required.
+CSRF_TRUSTED_ORIGINS = [
+    "https://jaybhagwancomputers.netlify.app",
+]
+
+# In development allow common localhost Vite ports to simplify testing.
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS += [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
 # ------------------------
 # PRODUCTION SECURITY SETTINGS
 # ------------------------
