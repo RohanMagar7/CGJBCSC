@@ -140,17 +140,16 @@ class PasswordResetRequestView(APIView):
         subject = 'Sewa Portal - Password reset request'
         message = f"Hello {user.full_name or user.username},\n\nWe received a request to reset your password.\n\nClick the link below to reset your password (valid for a limited time):\n\n{reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSewa Portal Team"
 
-        # Send email asynchronously in a background thread so a slow/misconfigured
-        # SMTP server cannot block the request and cause the gunicorn worker to
-        # timeout/killed. Any exceptions during send are logged but do not prevent
-        # returning the generic success response to the client.
+        
         def _send_password_reset_email(subject, message, from_email, recipient_list):
             try:
-                # Use fail_silently=True inside the background thread to prevent
-                # unhandled exceptions from crashing the thread. We still log
-                # any exceptions for server-side diagnostics.
-                send_mail(subject, message, from_email, recipient_list, fail_silently=True)
-                logger.info('Password reset email dispatched to %s (background thread)', recipient_list)
+                # Log which email backend is being used (helps debugging in prod)
+                logger.info('Email backend: %s, sending password reset to: %s', settings.EMAIL_BACKEND, recipient_list)
+
+                sent_count = send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+
+                # send_mail returns the number of successfully delivered messages
+                logger.info('Password reset email send_mail returned=%s for %s (background thread)', sent_count, recipient_list)
             except Exception as e:
                 logger.exception('Background email send failed for %s: %s', recipient_list, e)
 
