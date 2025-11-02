@@ -268,8 +268,18 @@ else:
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",  # IPv4 localhost
         "http://127.0.0.1:3000",
-        "https://jaybhagwancomputers.netlify.app"  # Production frontend
+        # Known production frontend host(s). Add any additional deployed frontend
+        # origins here (hostname must include scheme and no trailing slash).
+        "https://jaybhagwancomputers.netlify.app",
+        "https://cgjbcsc.netlify.app",
     ]
+# Allow a short-lived debug override via environment for rapid troubleshooting.
+# NOTE: Do NOT leave this enabled permanently in production. Use only to confirm
+# whether CORS is the source of client-side failures (enable, test, then disable).
+if os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True':
+    # django-cors-headers expects boolean True to allow all origins
+    CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_CREDENTIALS = True
 
 # ------------------------
