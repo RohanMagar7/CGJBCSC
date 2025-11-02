@@ -2,9 +2,19 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 # from core.health import health_check
 
+
+@require_http_methods(["GET"])
+def root_health_check(request):
+    """Simple root handler to reply 200 OK for probes that request GET /."""
+    return JsonResponse({"status": "ok", "service": "sewa_portal"})
+
 urlpatterns = [
+    # Lightweight root route so GET / does not return 404 (useful for health checks or simple probes)
+    path('', root_health_check),
     path('admin/', admin.site.urls),
     # Health check for Render keep-alive
     # path('health/', health_check, name='health_check'),
