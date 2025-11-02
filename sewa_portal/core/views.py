@@ -4,7 +4,8 @@ from django.shortcuts import render
 from rest_framework import viewsets, permissions, status as http_status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError, ParseError
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -96,9 +97,28 @@ class PasswordResetRequestView(APIView):
     throttle_classes = [PasswordResetRateThrottle]
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
+        # Defensive parsing: DRF will attempt to parse JSON when accessing request.data.
+        # If parsing fails (empty body or invalid JSON) we catch that and try sensible fallbacks
+        # so the API returns a clearer error message and logs the raw request for debugging.
+        try:
+            email = request.data.get('email')
+        except ParseError as e:
+            # Log content type and a short prefix of the raw body to help diagnosis
+            raw = request.body[:1000] if hasattr(request, 'body') else b''
+            logger.exception('JSON parse error on password-reset request. content_type=%s content_length=%s raw_prefix=%s',
+                             request.content_type, request.META.get('CONTENT_LENGTH'), raw)
+            # Attempt a tolerant fallback: try to parse body as JSON text ourselves
+            try:
+                if raw:
+                    parsed = json.loads(raw.decode('utf-8'))
+                    email = parsed.get('email')
+                else:
+                    email = None
+            except Exception:
+                email = None
+
         if not email:
-            return Response({'email': ['This field is required.']}, status=400)
+            return Response({'email': ['This field is required.'], 'detail': 'Send JSON body: {"email":"you@example.com"}.'}, status=400)
 
         try:
             user = User.objects.get(email__iexact=email)
@@ -135,12 +155,28 @@ class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        uid = request.data.get('uid')
-        token = request.data.get('token')
-        new_password = request.data.get('new_password')
+        # Defensive parsing similar to PasswordResetRequestView
+        try:
+            uid = request.data.get('uid')
+            token = request.data.get('token')
+            new_password = request.data.get('new_password')
+        except ParseError:
+            raw = request.body[:1000] if hasattr(request, 'body') else b''
+            logger.exception('JSON parse error on password-reset-confirm request. content_type=%s content_length=%s raw_prefix=%s',
+                             request.content_type, request.META.get('CONTENT_LENGTH'), raw)
+            try:
+                if raw:
+                    parsed = json.loads(raw.decode('utf-8'))
+                    uid = parsed.get('uid')
+                    token = parsed.get('token')
+                    new_password = parsed.get('new_password')
+                else:
+                    uid = token = new_password = None
+            except Exception:
+                uid = token = new_password = None
 
         if not uid or not token or not new_password:
-            return Response({'detail': 'uid, token and new_password are required.'}, status=400)
+            return Response({'detail': 'uid, token and new_password are required. Send JSON body: {"uid":"...","token":"...","new_password":"..."}.'}, status=400)
 
         try:
             uid_decoded = force_str(urlsafe_base64_decode(uid))
