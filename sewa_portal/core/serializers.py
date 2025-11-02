@@ -284,6 +284,15 @@ except Exception:
 
 
 class GopinathApplicationSerializer(serializers.ModelSerializer):
+    # Provide convenient file URL fields so frontend/admin can directly access uploaded files
+    passport_photo_url = serializers.SerializerMethodField()
+    college_id_card_url = serializers.SerializerMethodField()
+    ration_card_file_url = serializers.SerializerMethodField()
+    bank_passbook_url = serializers.SerializerMethodField()
+    aadhaar_file_url = serializers.SerializerMethodField()
+    fee_residence_proof_url = serializers.SerializerMethodField()
+    last_marksheet_url = serializers.SerializerMethodField()
+    signature_url = serializers.SerializerMethodField()
     class Meta:
         model = GopinathApplication
         fields = [
@@ -291,17 +300,21 @@ class GopinathApplicationSerializer(serializers.ModelSerializer):
             # Personal
             'full_name', 'dob', 'gender', 'mobile', 'email', 'aadhaar', 'passport_photo',
             # Education
-            'college_name', 'college_address', 'course', 'study_year', 'college_id_number', 'college_id_card',
+            'college_name', 'college_address', 'course', 'study_year', 'college_id_number', 'college_id_card', 'college_contact',
             # Residence
-            'current_address', 'native_place', 'residence_type', 'residence_name_address',
+            'current_address', 'native_place', 'residence_type', 'residence_name_address', 'permanent_address', 'residence_proof_attached',
             # Scheme
             'ration_card_number', 'ration_card_type', 'veg_nonveg', 'ration_card_file',
+            # Meal / canteen
+            'current_meal_location', 'why_need', 'near_canteen', 'expected_canteen_location',
             # Bank
             'bank_name', 'branch_name', 'account_number', 'ifsc', 'bank_passbook',
             # Other docs
             'aadhaar_file', 'fee_residence_proof', 'last_marksheet',
             # Declaration
-            'declaration', 'signature', 'submitted_at', 'status'
+            'declaration', 'signature', 'submitted_at', 'status',
+            # File URLs
+            'passport_photo_url', 'college_id_card_url', 'ration_card_file_url', 'bank_passbook_url', 'aadhaar_file_url', 'fee_residence_proof_url', 'last_marksheet_url', 'signature_url'
         ]
         read_only_fields = ['app_id', 'submitted_at', 'status']
 
@@ -311,3 +324,37 @@ class GopinathApplicationSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user') and request.user.is_authenticated:
             validated_data['user'] = request.user
         return super().create(validated_data)
+
+    # File URL getters
+    def _file_url(self, obj, field_name):
+        try:
+            f = getattr(obj, field_name)
+            if f:
+                return f.url
+        except Exception:
+            return None
+        return None
+
+    def get_passport_photo_url(self, obj):
+        return self._file_url(obj, 'passport_photo')
+
+    def get_college_id_card_url(self, obj):
+        return self._file_url(obj, 'college_id_card')
+
+    def get_ration_card_file_url(self, obj):
+        return self._file_url(obj, 'ration_card_file')
+
+    def get_bank_passbook_url(self, obj):
+        return self._file_url(obj, 'bank_passbook')
+
+    def get_aadhaar_file_url(self, obj):
+        return self._file_url(obj, 'aadhaar_file')
+
+    def get_fee_residence_proof_url(self, obj):
+        return self._file_url(obj, 'fee_residence_proof')
+
+    def get_last_marksheet_url(self, obj):
+        return self._file_url(obj, 'last_marksheet')
+
+    def get_signature_url(self, obj):
+        return self._file_url(obj, 'signature')

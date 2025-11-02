@@ -49,8 +49,10 @@ export default function AdminGopinathApplications() {
   const fetchApps = async () => {
     try {
       setLoading(true);
-      const res = await apiService.getGopinathApplications();
-      setApps(res.data || []);
+  const res = await apiService.getGopinathApplications();
+  // Support both plain array responses and DRF-style paginated responses { results: [...] }
+  const data = res?.data;
+  setApps(Array.isArray(data) ? data : (data?.results || []));
       setError('');
     } catch (err) {
       console.error(err);

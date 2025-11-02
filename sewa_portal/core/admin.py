@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme, GopinathApplication
+from django.utils.safestring import mark_safe
 
 # Register your models here.
 admin.site.register(User)
@@ -35,7 +36,7 @@ class GopinathApplicationAdmin(admin.ModelAdmin):
     list_display = ['app_id', 'full_name', 'mobile', 'email', 'status', 'submitted_at']
     list_filter = ['status', 'submitted_at']
     search_fields = ['full_name', 'mobile', 'email', 'aadhaar']
-    readonly_fields = ['submitted_at']
+    readonly_fields = ['submitted_at', 'signature_preview']
     ordering = ['-submitted_at']
     actions = ['approve_applications', 'reject_applications', 'mark_under_review']
 
@@ -73,6 +74,20 @@ class GopinathApplicationAdmin(admin.ModelAdmin):
         updated = queryset.update(status='Under Review')
         self.message_user(request, f"Marked {updated} application(s) as Under Review.")
     mark_under_review.short_description = 'Mark selected applications as Under Review'
+
+    def signature_preview(self, obj):
+        """Return an HTML preview / link to the uploaded signature file (if present)."""
+        try:
+            if obj.signature and hasattr(obj.signature, 'url'):
+                url = obj.signature.url
+                # If it's an image, render an <img>, otherwise return a download link
+                if str(obj.signature.name).lower().endswith(('.png', '.jpg', '.jpeg')):
+                    return mark_safe(f'<a href="{url}" target="_blank"><img src="{url}" style="max-height:120px;"/></a>')
+                return mark_safe(f'<a href="{url}" target="_blank">Download signature</a>')
+        except Exception:
+            return "-"
+        return "-"
+    signature_preview.short_description = 'Signature'
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):

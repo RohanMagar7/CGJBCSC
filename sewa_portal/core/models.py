@@ -392,18 +392,29 @@ class GopinathApplication(models.Model):
     study_year = models.CharField(max_length=50, blank=True)
     college_id_number = models.CharField(max_length=100, blank=True)
     college_id_card = models.FileField(upload_to='schemes/gopinath/college_id/', validators=[validate_file], null=True, blank=True)
+    # Contact number for college (frontend collects this)
+    college_contact = models.CharField(max_length=100, blank=True)
 
     # Residence Details
     current_address = models.TextField(blank=True)
     native_place = models.CharField(max_length=255, blank=True)
     residence_type = models.CharField(max_length=50, blank=True)  # hostel/room/rented
     residence_name_address = models.TextField(blank=True)
+    # Additional residence details collected by the frontend
+    permanent_address = models.TextField(blank=True)
+    residence_proof_attached = models.BooleanField(default=False)
 
     # Scheme Details
     ration_card_number = models.CharField(max_length=100, blank=True)
     ration_card_type = models.CharField(max_length=50, blank=True)
     veg_nonveg = models.CharField(max_length=20, blank=True)
     ration_card_file = models.FileField(upload_to='schemes/gopinath/ration_card/', validators=[validate_file], null=True, blank=True)
+
+    # Meal / canteen related fields collected on frontend
+    current_meal_location = models.CharField(max_length=255, blank=True)
+    why_need = models.TextField(blank=True)
+    near_canteen = models.CharField(max_length=10, blank=True)
+    expected_canteen_location = models.CharField(max_length=255, blank=True)
 
     # Bank Details
     bank_name = models.CharField(max_length=200, blank=True)

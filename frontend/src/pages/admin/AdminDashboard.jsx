@@ -79,7 +79,9 @@ const AdminDashboard = () => {
       setApplications(appsRes.data);
       setUsers(usersRes.data);
       setServices(servicesRes.data);
-      setGopinathApps(gopiRes?.data || []);
+  // Support both plain array responses and DRF-style paginated responses { results: [...] }
+  const gopiData = gopiRes?.data;
+  setGopinathApps(Array.isArray(gopiData) ? gopiData : (gopiData?.results || []));
         // Try to fetch gov schemes count for admin quick action (non-blocking)
         try {
           const schemesRes = await apiService.getGovSchemes?.();
@@ -138,8 +140,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleCloseSnackbar = () => {
-
   // Open a dialog showing full Gopinath application details
   const openGopiDetail = async (appId) => {
     try {
@@ -155,10 +155,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const closeGopiDetail = () => {
-    setGopiDetailOpen(false);
-    setSelectedGopi(null);
-  };
+  // NOTE: close action is inlined in the Dialog props to avoid runtime reference errors from stale bundles
+
+  const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
@@ -728,7 +727,7 @@ const AdminDashboard = () => {
       </Container>
 
       {/* Snackbar for notifications */}
-      <Dialog open={gopiDetailOpen} onClose={closeGopiDetail} fullWidth maxWidth="md">
+  <Dialog open={gopiDetailOpen} onClose={() => { setGopiDetailOpen(false); setSelectedGopi(null); }} fullWidth maxWidth="md">
         <DialogTitle>Gopinath Application #{selectedGopi?.app_id || ''}</DialogTitle>
         <DialogContent dividers>
           {gopiLoading ? (
@@ -737,40 +736,64 @@ const AdminDashboard = () => {
             </Box>
           ) : selectedGopi ? (
             <Box>
-              <Typography variant="h6" fontWeight={700}>Personal</Typography>
+              <Typography variant="h6" fontWeight={700}>तपशील</Typography>
               <Divider sx={{ my: 1 }} />
-              <Grid container spacing={1} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6}><Typography><strong>Name:</strong> {selectedGopi.full_name}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography><strong>Mobile:</strong> {selectedGopi.mobile}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography><strong>DOB:</strong> {selectedGopi.dob || '—'}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography><strong>Gender:</strong> {selectedGopi.gender || '—'}</Typography></Grid>
-                <Grid item xs={12}><Typography><strong>Address:</strong> {selectedGopi.current_address || selectedGopi.residence_address || '—'}</Typography></Grid>
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12} sm={6}><Typography><strong>1 — विद्यार्थीचे पूर्ण नाव (मराठी व इंग्रजीत):</strong> {selectedGopi.full_name || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>2 — जन्मतारीख:</strong> {selectedGopi.dob || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>3 — लिंग (पुरुष / स्त्री / इतर):</strong> {selectedGopi.gender || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>4 — आधार क्रमांक:</strong> {selectedGopi.aadhaar || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>5 — मोबाईल क्रमांक:</strong> {selectedGopi.mobile || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>6 — ई-मेल आयडी:</strong> {selectedGopi.email || '—'}</Typography></Grid>
               </Grid>
 
-              <Typography variant="h6" fontWeight={700}>Education / College</Typography>
+              <Typography variant="h6" fontWeight={700}>🏠 कौटुंबिक व राहत्या ठिकाणाची माहिती</Typography>
               <Divider sx={{ my: 1 }} />
-              <Grid container spacing={1} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6}><Typography><strong>College:</strong> {selectedGopi.college_name || '—'}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography><strong>Course / Year:</strong> {`${selectedGopi.course || '—'} / ${selectedGopi.study_year || '—'}`}</Typography></Grid>
-                <Grid item xs={12}><Typography><strong>College ID:</strong> {selectedGopi.college_id_number || '—'}</Typography></Grid>
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>7 — कायमचा पत्ता (गाव, तालुका, जिल्हा):</strong> {selectedGopi.permanent_address || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>8 — सध्याचा पत्ता (शहरातील वास्तव्याचे ठिकाण):</strong> {selectedGopi.current_address || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>9 — रहिवासी पुरावा जोडला आहे का? (होय / नाही):</strong> {typeof selectedGopi.residence_proof_attached !== 'undefined' ? (selectedGopi.residence_proof_attached ? 'होय' : 'नाही') : '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>10 — राशन कार्डाचा प्रकार:</strong> {selectedGopi.ration_card_type || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>11 — राशन कार्ड क्रमांक:</strong> {selectedGopi.ration_card_number || '—'}</Typography></Grid>
               </Grid>
 
-              <Typography variant="h6" fontWeight={700}>Identification</Typography>
+              <Typography variant="h6" fontWeight={700}>🎓 शैक्षणिक माहिती</Typography>
               <Divider sx={{ my: 1 }} />
-              <Grid container spacing={1} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6}><Typography><strong>Aadhaar:</strong> {selectedGopi.aadhaar || '—'}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography><strong>Email:</strong> {selectedGopi.email || '—'}</Typography></Grid>
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>12 — महाविद्यालय / संस्था नाव:</strong> {selectedGopi.college_name || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>13 — अभ्यासक्रम / शाखा:</strong> {selectedGopi.course || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>14 — वर्ग / वर्ष:</strong> {selectedGopi.study_year || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>15 — प्रवेश दिनांक:</strong> {selectedGopi.admission_date || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>16 — महाविद्यालयाचे पत्ते व संपर्क क्रमांक:</strong> {selectedGopi.college_address || '—'}</Typography></Grid>
               </Grid>
 
-              <Typography variant="h6" fontWeight={700}>Documents</Typography>
+              <Typography variant="h6" fontWeight={700}>🍱 अन्नछत्र योजनेशी संबंधित माहिती</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>17 — तुम्ही सध्या जेवण कुठे करता?:</strong> {selectedGopi.current_meal_location || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>18 — अन्नछत्राची गरज का आहे?:</strong> {selectedGopi.why_need || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>19 — तुम्ही शासनमान्य अन्नछत्राजवळ राहता का?:</strong> {selectedGopi.near_canteen || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>20 — अपेक्षित अन्नछत्राचे ठिकाण (शहर/जिल्हा):</strong> {selectedGopi.expected_canteen_location || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>📎 जोडलेली कागदपत्रे</Typography>
               <Divider sx={{ my: 1 }} />
               <Stack spacing={1} sx={{ mb: 2 }}>
-                {['passport_photo','college_id_card','ration_card_file','aadhaar_file','bank_passbook','fee_residence_proof','last_marksheet','signature'].map((k) => (
+                {[
+                  ['aadhaar_file','आधार कार्ड'],
+                  ['ration_card_file','राशन कार्ड'],
+                  ['income_certificate','उत्पन्न प्रमाणपत्र'],
+                  ['fee_residence_proof','रहिवासी दाखला / भाडेकरार'],
+                  ['college_id_card','महाविद्यालय ओळखपत्र / प्रवेशपत्र'],
+                  ['passport_photo','पासपोर्ट साईज फोटो (२ नग)'],
+                ].map(([k, label]) => (
                   selectedGopi[k] ? (
                     <Link key={k} href={selectedGopi[k]} target="_blank" rel="noreferrer" underline="none">
-                      <Button variant="outlined">View {k.replace(/_/g,' ')}</Button>
+                      <Button variant="outlined">{label}</Button>
                     </Link>
-                  ) : null
+                  ) : (
+                    <Typography key={k} variant="body2" color="text.secondary">{label}: <strong>नाही</strong></Typography>
+                  )
                 ))}
               </Stack>
 
@@ -784,10 +807,11 @@ const AdminDashboard = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeGopiDetail}>Close</Button>
+          <Button onClick={() => { setGopiDetailOpen(false); setSelectedGopi(null); }}>Close</Button>
           <Button variant="contained" onClick={() => {
             if (selectedGopi) navigate(`/admin/gopinath-applications/${selectedGopi.app_id}`);
-            closeGopiDetail();
+            setGopiDetailOpen(false);
+            setSelectedGopi(null);
           }}>Open in Review Page</Button>
         </DialogActions>
       </Dialog>

@@ -507,7 +507,7 @@ class GopinathApplicationViewSet(viewsets.ModelViewSet):
     serializer_class = GopinathApplicationSerializer
 
     def get_permissions(self):
-        # Allow anyone authenticated to create; listing/updating restricted to admin or owner
+        # Allow authenticated users to create; listing/updating restricted to admin or owner
         if self.action == 'create':
             return [permissions.IsAuthenticated()]
         if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
@@ -544,11 +544,17 @@ class GopinathApplicationViewSet(viewsets.ModelViewSet):
             logger.error("GopinathApplication validation failed for user=%s errors=%s", getattr(request.user, 'username', None), serializer.errors)
             return Response(serializer.errors, status=400)
 
-        self.perform_create(serializer)
+        try:
+            self.perform_create(serializer)
+        except Exception as e:
+            # Log the full exception for debugging (traceback will appear in server logs)
+            logger.exception('Exception while creating GopinathApplication for user=%s: %s', getattr(request.user, 'username', None), e)
+            return Response({'detail': 'Server error while saving application.'}, status=500)
+
         headers = self.get_success_headers(serializer.data)
         logger.info("GopinathApplication created app_id=%s by=%s", serializer.data.get('app_id'), getattr(request.user, 'username', None))
         return Response(serializer.data, status=201, headers=headers)
-    
+
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def statistics(self, request):
         """Get payment statistics for admin dashboard"""
@@ -558,31 +564,13 @@ class GopinathApplicationViewSet(viewsets.ModelViewSet):
         total_revenue = Payment.objects.filter(payment_status='Completed').aggregate(
             total=models.Sum('amount')
         )['total'] or 0
-        
+
         return Response({
             'total_payments': total_payments,
             'completed_payments': completed_payments,
             'pending_payments': pending_payments,
             'total_revenue': float(total_revenue),
         })
-
-
-class GopinathApplicationViewSet(viewsets.ModelViewSet):
-    """CRUD for Gopinath Scheme applications. Users can create their own application; admins can list and manage."""
-    queryset = GopinathApplication.objects.all().select_related('user')
-    serializer_class = GopinathApplicationSerializer
-
-    def get_permissions(self):
-        # Allow anyone authenticated to create; listing/updating restricted to admin or owner
-        if self.action == 'create':
-            return [permissions.IsAuthenticated()]
-        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated(), IsAdminUser()]
-        return [permissions.IsAuthenticated()]
-
-    def perform_create(self, serializer):
-        # attach user if available
-        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def update_status(self, request, pk=None):
@@ -615,7 +603,7 @@ class GopinathApplicationViewSet(viewsets.ModelViewSet):
                     logger.info("GopinathApplication accepted email sent to=%s app_id=%s", app.email, app.app_id)
             elif status == 'Rejected' and app.email:
                 subject = 'आपली नोंदणी नाकारण्यात आली - गोपीनाथ योजना'
-                body = f"नमस्कार {app.full_name},\n\nदुर्दैवाने, आपली नोंदणी नाकारण्यात आली आहे. कारण: {reason}\n\nआपण सुधारणा करून पुन्हा सबमिट करू शकता.\n\nधन्यवाद,\nगोपीनाथ टीम"
+                body = f"नमस्कार {app.full_name},\n\nदुर्दैवाने, आपली नोंदणी नाकारण्यात झाली आहे. कारण: {reason}\n\nआपण सुधारणा करून पुन्हा सबमिट करू शकता.\n\nधन्यवाद,\nगोपीनाथ टीम"
                 send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.email], fail_silently=True)
                 logger.info("GopinathApplication rejection email sent to=%s app_id=%s reason=%s", app.email, app.app_id, reason)
         except Exception as e:
