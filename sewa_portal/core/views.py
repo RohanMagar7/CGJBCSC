@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 from django.utils import timezone
 import os
+import threading
 from django.db import models
 from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme, GopinathApplication
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
@@ -139,12 +140,26 @@ class PasswordResetRequestView(APIView):
         subject = 'Sewa Portal - Password reset request'
         message = f"Hello {user.full_name or user.username},\n\nWe received a request to reset your password.\n\nClick the link below to reset your password (valid for a limited time):\n\n{reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSewa Portal Team"
 
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
-            logger.info('Password reset email sent to %s', user.email)
-        except Exception as e:
-            logger.exception('Failed to send password reset email to %s: %s', user.email, e)
-            return Response({'detail': 'Failed to send reset email'}, status=500)
+        # Send email asynchronously in a background thread so a slow/misconfigured
+        # SMTP server cannot block the request and cause the gunicorn worker to
+        # timeout/killed. Any exceptions during send are logged but do not prevent
+        # returning the generic success response to the client.
+        def _send_password_reset_email(subject, message, from_email, recipient_list):
+            try:
+                # Use fail_silently=True inside the background thread to prevent
+                # unhandled exceptions from crashing the thread. We still log
+                # any exceptions for server-side diagnostics.
+                send_mail(subject, message, from_email, recipient_list, fail_silently=True)
+                logger.info('Password reset email dispatched to %s (background thread)', recipient_list)
+            except Exception as e:
+                logger.exception('Background email send failed for %s: %s', recipient_list, e)
+
+        thread = threading.Thread(
+            target=_send_password_reset_email,
+            args=(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email]),
+            daemon=True,
+        )
+        thread.start()
 
         return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
 

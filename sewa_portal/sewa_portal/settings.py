@@ -271,7 +271,6 @@ else:
         # Known production frontend host(s). Add any additional deployed frontend
         # origins here (hostname must include scheme and no trailing slash).
         "https://jaybhagwancomputers.netlify.app",
-        "https://cgjbcsc.netlify.app",
     ]
 # Allow a short-lived debug override via environment for rapid troubleshooting.
 # NOTE: Do NOT leave this enabled permanently in production. Use only to confirm
