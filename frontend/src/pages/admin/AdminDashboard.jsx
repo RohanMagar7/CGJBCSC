@@ -20,6 +20,15 @@ import {
   Divider,
   IconButton,
   alpha,
+  Alert,
+  Snackbar,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
+  Stack,
 } from '@mui/material';
 import {
   People,
@@ -27,6 +36,7 @@ import {
   CheckCircle,
   HourglassEmpty,
   AdminPanelSettings,
+  AccountBalance,
   Visibility,
   TrendingUp,
   Category,
@@ -34,6 +44,7 @@ import {
   ManageAccounts,
   Settings,
   Description,
+  CloudUpload,
 } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -43,7 +54,14 @@ const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [gopinathApps, setGopinathApps] = useState([]);
+  const [gopiDetailOpen, setGopiDetailOpen] = useState(false);
+  const [selectedGopi, setSelectedGopi] = useState(null);
+  const [gopiLoading, setGopiLoading] = useState(false);
+  const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,19 +70,95 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [appsRes, usersRes, servicesRes] = await Promise.all([
+      const [appsRes, usersRes, servicesRes, gopiRes] = await Promise.all([
         apiService.getApplications(),
         apiService.getUsers(),
         apiService.getServices(),
+        apiService.getGopinathApplications?.(),
       ]);
       setApplications(appsRes.data);
       setUsers(usersRes.data);
       setServices(servicesRes.data);
+  // Support both plain array responses and DRF-style paginated responses { results: [...] }
+  const gopiData = gopiRes?.data;
+  setGopinathApps(Array.isArray(gopiData) ? gopiData : (gopiData?.results || []));
+        // Try to fetch gov schemes count for admin quick action (non-blocking)
+        try {
+          const schemesRes = await apiService.getGovSchemes?.();
+          setSchemes(schemesRes?.data || []);
+        } catch (e) {
+          // ignore, optional feature
+          setSchemes([]);
+        }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const response = await apiService.createBackup();
+      if (response.data.success) {
+        setSnackbar({
+          open: true,
+          message: `Backup created successfully: ${response.data.backup?.name || 'backup file'}`,
+          severity: 'success',
+        });
+      } else {
+        // Check if it's a development environment error
+        const isDevelopmentError = response.data.message?.includes('DATABASE_URL not set') || 
+                                   response.data.message?.includes('Production database not configured');
+        
+        setSnackbar({
+          open: true,
+          message: isDevelopmentError 
+            ? '⚠️ Backups only work in production with PostgreSQL. This is a development environment using SQLite.'
+            : response.data.message || 'Failed to create backup',
+          severity: isDevelopmentError ? 'warning' : 'error',
+        });
+      }
+    } catch (err) {
+      console.error('Backup error:', err);
+      
+      // Check if it's a development environment error
+      const errorMessage = err.response?.data?.message || '';
+      const isDevelopmentError = errorMessage.includes('DATABASE_URL not set') || 
+                                 errorMessage.includes('Production database not configured');
+      
+      setSnackbar({
+        open: true,
+        message: isDevelopmentError 
+          ? '⚠️ Backups only work in production with PostgreSQL. This is a development environment using SQLite.'
+          : errorMessage || 'Failed to create backup. Please try again.',
+        severity: isDevelopmentError ? 'warning' : 'error',
+      });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  // Open a dialog showing full Gopinath application details
+  const openGopiDetail = async (appId) => {
+    try {
+      setGopiLoading(true);
+      const res = await apiService.getGopinathApplication?.(appId);
+      setSelectedGopi(res?.data || null);
+      setGopiDetailOpen(true);
+    } catch (err) {
+      console.error('Failed to load Gopinath application detail:', err);
+      setSnackbar({ open: true, message: 'Failed to load application details', severity: 'error' });
+    } finally {
+      setGopiLoading(false);
+    }
+  };
+
+  // NOTE: close action is inlined in the Dialog props to avoid runtime reference errors from stale bundles
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   const stats = [
@@ -103,6 +197,14 @@ const AdminDashboard = () => {
       bgColor: alpha('#4caf50', 0.1),
       change: '+3',
       link: '/admin/services',
+    },
+    {
+      title: 'Gopinath Apps',
+      value: gopinathApps.length,
+      icon: <Description sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gopinath-applications',
     },
   ];
 
@@ -152,6 +254,24 @@ const AdminDashboard = () => {
       bgColor: alpha('#4caf50', 0.1),
       link: '/admin/services',
       count: services.length,
+    },
+    {
+      title: 'Manage Gov Schemes',
+      description: 'Create and manage government schemes visible to users',
+      icon: <AccountBalance sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gov-schemes',
+      count: schemes.length,
+    },
+    {
+      title: 'Gopinath Applications',
+      description: 'Review and manage Gopinath scheme registrations',
+      icon: <Description sx={{ fontSize: 40 }} />,
+      color: '#2196f3',
+      bgColor: alpha('#2196f3', 0.08),
+      link: '/admin/gopinath-applications',
+      count: gopinathApps.length,
     },
   ];
 
@@ -330,6 +450,133 @@ const AdminDashboard = () => {
           </Grid>
         </Box>
 
+        {/* Recent Gopinath Applications */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Recent Gopinath Applications
+            </Typography>
+            <Button
+              variant="outlined"
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/admin/gopinath-applications')}
+              sx={{ borderRadius: 2 }}
+            >
+              View All
+            </Button>
+          </Box>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: alpha('#667eea', 0.03) }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>App ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Applicant</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Mobile</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Submitted</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(!gopinathApps || gopinathApps.length === 0) ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                        <Description sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">No Gopinath applications yet</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    gopinathApps.slice(0, 6).map((app) => (
+                      <TableRow key={app.app_id} hover>
+                        <TableCell><Chip label={`#${app.app_id}`} size="small" /></TableCell>
+                        <TableCell>{app.full_name}</TableCell>
+                        <TableCell>{app.mobile}</TableCell>
+                        <TableCell>{app.email || '—'}</TableCell>
+                        <TableCell>
+                          {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell><StatusBadge status={app.status} /></TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" title="View details" onClick={() => openGopiDetail(app.app_id)}>
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Card>
+        </Box>
+
+        {/* Database Backup Section */}
+        <Box sx={{ mb: 4 }}>
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CloudUpload sx={{ fontSize: 32 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
+                      Database Backup (Production Only)
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                      Create a backup of the PostgreSQL database to Dropbox
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 0.5, display: 'block' }}>
+                      ⚠️ Requires DATABASE_URL (Production) • Auto-backup every 2 days
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={backupLoading ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                  disabled={backupLoading}
+                  onClick={handleBackup}
+                  sx={{
+                    bgcolor: 'white',
+                    color: '#667eea',
+                    px: 3,
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }}
+                >
+                  {backupLoading ? 'Creating Backup...' : 'Create Backup Now'}
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
         {/* Recent Applications */}
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -478,6 +725,106 @@ const AdminDashboard = () => {
           </Grid>
         </Box>
       </Container>
+
+      {/* Snackbar for notifications */}
+  <Dialog open={gopiDetailOpen} onClose={() => { setGopiDetailOpen(false); setSelectedGopi(null); }} fullWidth maxWidth="md">
+        <DialogTitle>Gopinath Application #{selectedGopi?.app_id || ''}</DialogTitle>
+        <DialogContent dividers>
+          {gopiLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : selectedGopi ? (
+            <Box>
+              <Typography variant="h6" fontWeight={700}>तपशील</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12} sm={6}><Typography><strong>1 — विद्यार्थीचे पूर्ण नाव (मराठी व इंग्रजीत):</strong> {selectedGopi.full_name || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>2 — जन्मतारीख:</strong> {selectedGopi.dob || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>3 — लिंग (पुरुष / स्त्री / इतर):</strong> {selectedGopi.gender || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>4 — आधार क्रमांक:</strong> {selectedGopi.aadhaar || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>5 — मोबाईल क्रमांक:</strong> {selectedGopi.mobile || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>6 — ई-मेल आयडी:</strong> {selectedGopi.email || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>🏠 कौटुंबिक व राहत्या ठिकाणाची माहिती</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>7 — कायमचा पत्ता (गाव, तालुका, जिल्हा):</strong> {selectedGopi.permanent_address || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>8 — सध्याचा पत्ता (शहरातील वास्तव्याचे ठिकाण):</strong> {selectedGopi.current_address || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>9 — रहिवासी पुरावा जोडला आहे का? (होय / नाही):</strong> {typeof selectedGopi.residence_proof_attached !== 'undefined' ? (selectedGopi.residence_proof_attached ? 'होय' : 'नाही') : '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>10 — राशन कार्डाचा प्रकार:</strong> {selectedGopi.ration_card_type || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>11 — राशन कार्ड क्रमांक:</strong> {selectedGopi.ration_card_number || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>🎓 शैक्षणिक माहिती</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>12 — महाविद्यालय / संस्था नाव:</strong> {selectedGopi.college_name || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>13 — अभ्यासक्रम / शाखा:</strong> {selectedGopi.course || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>14 — वर्ग / वर्ष:</strong> {selectedGopi.study_year || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>15 — प्रवेश दिनांक:</strong> {selectedGopi.admission_date || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>16 — महाविद्यालयाचे पत्ते व संपर्क क्रमांक:</strong> {selectedGopi.college_address || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>🍱 अन्नछत्र योजनेशी संबंधित माहिती</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={12}><Typography><strong>17 — तुम्ही सध्या जेवण कुठे करता?:</strong> {selectedGopi.current_meal_location || '—'}</Typography></Grid>
+                <Grid item xs={12}><Typography><strong>18 — अन्नछत्राची गरज का आहे?:</strong> {selectedGopi.why_need || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>19 — तुम्ही शासनमान्य अन्नछत्राजवळ राहता का?:</strong> {selectedGopi.near_canteen || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>20 — अपेक्षित अन्नछत्राचे ठिकाण (शहर/जिल्हा):</strong> {selectedGopi.expected_canteen_location || '—'}</Typography></Grid>
+              </Grid>
+
+              <Typography variant="h6" fontWeight={700}>📎 जोडलेली कागदपत्रे</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Stack spacing={1} sx={{ mb: 2 }}>
+                {[
+                  ['aadhaar_file','आधार कार्ड'],
+                  ['ration_card_file','राशन कार्ड'],
+                  ['income_certificate','उत्पन्न प्रमाणपत्र'],
+                  ['fee_residence_proof','रहिवासी दाखला / भाडेकरार'],
+                  ['college_id_card','महाविद्यालय ओळखपत्र / प्रवेशपत्र'],
+                  ['passport_photo','पासपोर्ट साईज फोटो (२ नग)'],
+                ].map(([k, label]) => (
+                  selectedGopi[k] ? (
+                    <Link key={k} href={selectedGopi[k]} target="_blank" rel="noreferrer" underline="none">
+                      <Button variant="outlined">{label}</Button>
+                    </Link>
+                  ) : (
+                    <Typography key={k} variant="body2" color="text.secondary">{label}: <strong>नाही</strong></Typography>
+                  )
+                ))}
+              </Stack>
+
+              <Grid container spacing={1}>
+                <Grid item xs={12} sm={6}><Typography><strong>Status:</strong> {selectedGopi.status}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography><strong>Submitted:</strong> {selectedGopi.submitted_at ? new Date(selectedGopi.submitted_at).toLocaleString() : '—'}</Typography></Grid>
+              </Grid>
+            </Box>
+          ) : (
+            <Typography>No details available</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setGopiDetailOpen(false); setSelectedGopi(null); }}>Close</Button>
+          <Button variant="contained" onClick={() => {
+            if (selectedGopi) navigate(`/admin/gopinath-applications/${selectedGopi.app_id}`);
+            setGopiDetailOpen(false);
+            setSelectedGopi(null);
+          }}>Open in Review Page</Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

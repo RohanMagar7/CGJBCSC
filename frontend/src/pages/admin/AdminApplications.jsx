@@ -46,6 +46,7 @@ import {
   CalendarToday,
   ArrowForward,
   Refresh,
+  Delete,
 } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -73,6 +74,10 @@ const AdminApplications = () => {
   const [actionDialog, setActionDialog] = useState({ open: false, action: null, app: null });
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Delete dialog
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, application: null });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -202,6 +207,39 @@ const AdminApplications = () => {
     }
   };
 
+  const handleDeleteClick = (application) => {
+    setDeleteDialog({ open: true, application });
+    handleMenuClose();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.application) return;
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      await apiService.deleteApplication(deleteDialog.application.application_id);
+      setSuccess(`Application #${deleteDialog.application.application_id} deleted successfully!`);
+      setDeleteDialog({ open: false, application: null });
+      
+      // Refresh the applications list
+      fetchData();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete application');
+      setDeleteDialog({ open: false, application: null });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({ open: false, application: null });
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -218,16 +256,33 @@ const AdminApplications = () => {
             borderRadius: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                <Assignment sx={{ fontSize: 32 }} />
+              <Avatar sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)', 
+                width: { xs: 48, sm: 56 }, 
+                height: { xs: 48, sm: 56 } 
+              }}>
+                <Assignment sx={{ fontSize: { xs: 28, sm: 32 } }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 'bold', 
+                  mb: 0.5,
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                }}>
                   Manage Applications
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1" sx={{ 
+                  opacity: 0.9,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
                   Review and process pending applications
                 </Typography>
               </Box>
@@ -242,6 +297,8 @@ const AdminApplications = () => {
                 color: 'primary.main',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 fontWeight: 'bold',
+                alignSelf: { xs: 'flex-end', sm: 'auto' },
+                minWidth: { xs: 'auto', sm: 'auto' },
               }}
             >
               Refresh
@@ -523,6 +580,11 @@ const AdminApplications = () => {
               </MenuItem>
             </>
           )}
+          <Divider />
+          <MenuItem onClick={() => handleDeleteClick(selectedApp)}>
+            <Delete sx={{ mr: 1, fontSize: 20, color: 'error.main' }} />
+            Delete Application
+          </MenuItem>
         </Menu>
 
         {/* Quick Action Dialog */}
@@ -620,6 +682,80 @@ const AdminApplications = () => {
               startIcon={actionDialog.action === 'Approved' ? <CheckCircle /> : <Cancel />}
             >
               {submitting ? 'Processing...' : `Confirm ${actionDialog.action}`}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteDialog.open}
+          onClose={handleDeleteCancel}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar
+                sx={{
+                  bgcolor: alpha('#f44336', 0.1),
+                  color: 'error.main',
+                }}
+              >
+                <Delete />
+              </Avatar>
+              <Typography variant="h6" fontWeight="bold">
+                Delete Application
+              </Typography>
+            </Box>
+          </DialogTitle>
+          <Divider />
+          <DialogContent sx={{ pt: 3 }}>
+            <Typography variant="body1" gutterBottom>
+              Are you sure you want to delete this application?
+            </Typography>
+            {deleteDialog.application && (
+              <Paper
+                elevation={0}
+                sx={{ p: 2, mt: 2, bgcolor: alpha('#f44336', 0.05), borderRadius: 2 }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  Application #{deleteDialog.application.application_id}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Service: {getServiceName(deleteDialog.application.service)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Applicant: {getUserName(deleteDialog.application.user)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Status: {deleteDialog.application.status}
+                </Typography>
+              </Paper>
+            )}
+            <Alert severity="error" sx={{ mt: 2 }}>
+              This action cannot be undone. All related documents and payment records will also be deleted.
+            </Alert>
+          </DialogContent>
+          <Divider />
+          <DialogActions sx={{ p: 2.5, gap: 1 }}>
+            <Button
+              onClick={handleDeleteCancel}
+              variant="outlined"
+              sx={{ borderRadius: 2 }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="contained"
+              color="error"
+              sx={{ borderRadius: 2, minWidth: 120 }}
+              disabled={deleting}
+              startIcon={<Delete />}
+            >
+              {deleting ? 'Deleting...' : 'Delete Application'}
             </Button>
           </DialogActions>
         </Dialog>

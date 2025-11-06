@@ -121,13 +121,13 @@ export default function AdminUsers() {
     },
     {
       label: 'Admins',
-      count: users.filter((u) => u.role === 'Admin').length,
+      count: users.filter((u) => u.role === 'admin').length,
       color: '#f093fb',
       icon: <AdminIcon />,
     },
     {
       label: 'Regular Users',
-      count: users.filter((u) => u.role === 'User' || !u.role).length,
+      count: users.filter((u) => u.role === 'user' || !u.role).length,
       color: '#4caf50',
       icon: <Badge />,
     },
@@ -150,7 +150,7 @@ export default function AdminUsers() {
       full_name: user.full_name || '',
       email: user.email || '',
       phone_number: user.phone_number || '',
-      role: user.role || 'User',
+      role: user.role || 'user',
       is_active: user.is_active !== false,
     });
     setFormErrors({});
@@ -246,16 +246,33 @@ export default function AdminUsers() {
             borderRadius: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                <ManageAccounts sx={{ fontSize: 32 }} />
+              <Avatar sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)', 
+                width: { xs: 48, sm: 56 }, 
+                height: { xs: 48, sm: 56 } 
+              }}>
+                <ManageAccounts sx={{ fontSize: { xs: 28, sm: 32 } }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 'bold', 
+                  mb: 0.5,
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                }}>
                   Manage Users
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                <Typography variant="body1" sx={{ 
+                  opacity: 0.9,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
                   View and manage user accounts
                 </Typography>
               </Box>
@@ -270,6 +287,8 @@ export default function AdminUsers() {
                 color: 'primary.main',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 fontWeight: 'bold',
+                alignSelf: { xs: 'flex-end', sm: 'auto' },
+                minWidth: { xs: 'auto', sm: 'auto' },
               }}
             >
               Refresh
@@ -452,7 +471,7 @@ export default function AdminUsers() {
                         sx={{
                           width: 80,
                           height: 80,
-                          bgcolor: user.role === 'Admin' ? 'error.main' : 'primary.main',
+                          bgcolor: user.role === 'admin' ? 'error.main' : 'primary.main',
                           margin: '0 auto',
                           mb: 2,
                           fontSize: '2rem',
@@ -472,10 +491,10 @@ export default function AdminUsers() {
                       {/* Role & Status Badges */}
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mb: 2 }}>
                         <Chip
-                          icon={user.role === 'Admin' ? <AdminIcon /> : <PersonIcon />}
-                          label={user.role || 'User'}
+                          icon={user.role === 'admin' ? <AdminIcon /> : <PersonIcon />}
+                          label={user.role === 'admin' ? 'Admin' : 'User'}
                           size="small"
-                          color={user.role === 'Admin' ? 'error' : 'primary'}
+                          color={user.role === 'admin' ? 'error' : 'primary'}
                         />
                         <Chip
                           icon={user.is_active !== false ? <CheckCircle /> : <Block />}
@@ -562,7 +581,7 @@ export default function AdminUsers() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Avatar
                   sx={{
-                    bgcolor: selectedUser?.role === 'Admin' ? 'error.main' : 'primary.main',
+                    bgcolor: selectedUser?.role === 'admin' ? 'error.main' : 'primary.main',
                     width: 40,
                     height: 40,
                   }}
@@ -632,10 +651,10 @@ export default function AdminUsers() {
                     primary="Role"
                     secondary={
                       <Chip
-                        icon={selectedUser.role === 'Admin' ? <AdminIcon /> : <PersonIcon />}
-                        label={selectedUser.role || 'User'}
+                        icon={selectedUser.role === 'admin' ? <AdminIcon /> : <PersonIcon />}
+                        label={selectedUser.role === 'admin' ? 'Admin' : 'User'}
                         size="small"
-                        color={selectedUser.role === 'Admin' ? 'error' : 'primary'}
+                        color={selectedUser.role === 'admin' ? 'error' : 'primary'}
                         sx={{ mt: 0.5 }}
                       />
                     }
@@ -782,12 +801,12 @@ export default function AdminUsers() {
                 onChange={handleEditInputChange}
                 startAdornment={
                   <InputAdornment position="start">
-                    {editFormData.role === 'Admin' ? <AdminIcon color="action" /> : <PersonIcon color="action" />}
+                    {editFormData.role === 'admin' ? <AdminIcon color="action" /> : <PersonIcon color="action" />}
                   </InputAdornment>
                 }
               >
-                <MenuItem value="User">Regular User</MenuItem>
-                <MenuItem value="Admin">Administrator</MenuItem>
+                <MenuItem value="user">Regular User</MenuItem>
+                <MenuItem value="admin">Administrator</MenuItem>
               </Select>
               {formErrors.role && (
                 <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>

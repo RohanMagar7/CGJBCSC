@@ -46,6 +46,9 @@ import {
   FilterList,
   TrendingUp,
   AccountBalance,
+  QrCode2,
+  Settings,
+  Upload,
 } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -58,6 +61,20 @@ export default function AdminPayments() {
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [statistics, setStatistics] = useState(null);
+  
+  // Payment Settings State
+  const [paymentSettings, setPaymentSettings] = useState([]);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [editingSettings, setEditingSettings] = useState(null);
+  const [deleteSettingsDialogOpen, setDeleteSettingsDialogOpen] = useState(false);
+  const [settingsToDelete, setSettingsToDelete] = useState(null);
+  const [settingsFormData, setSettingsFormData] = useState({
+    upi_id: '',
+    upi_number: '',
+    is_active: true,
+  });
+  const [qrCodeFile, setQrCodeFile] = useState(null);
+  const [qrCodePreview, setQrCodePreview] = useState(null);
   
   // Pagination
   const [page, setPage] = useState(0);
@@ -90,6 +107,7 @@ export default function AdminPayments() {
     fetchPayments();
     fetchApplications();
     fetchStatistics();
+    fetchPaymentSettings();
   }, []);
 
   const fetchPayments = async () => {
@@ -121,6 +139,123 @@ export default function AdminPayments() {
       setStatistics(response.data || response);
     } catch (err) {
       console.error('Failed to fetch statistics:', err);
+    }
+  };
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const response = await apiService.getPaymentSettings();
+      setPaymentSettings(Array.isArray(response.data) ? response.data : [response.data]);
+    } catch (err) {
+      console.error('Failed to fetch payment settings:', err);
+    }
+  };
+
+  // Payment Settings Handlers
+  const handleOpenSettingsDialog = (settings = null) => {
+    if (settings) {
+      setEditingSettings(settings);
+      setSettingsFormData({
+        upi_id: settings.upi_id || '',
+        upi_number: settings.upi_number || '',
+        is_active: settings.is_active !== undefined ? settings.is_active : true,
+      });
+      setQrCodePreview(settings.qr_code_url || null);
+    } else {
+      setEditingSettings(null);
+      setSettingsFormData({
+        upi_id: '',
+        upi_number: '',
+        is_active: true,
+      });
+      setQrCodePreview(null);
+    }
+    setQrCodeFile(null);
+    setSettingsDialogOpen(true);
+  };
+
+  const handleCloseSettingsDialog = () => {
+    setSettingsDialogOpen(false);
+    setEditingSettings(null);
+    setSettingsFormData({
+      upi_id: '',
+      upi_number: '',
+      is_active: true,
+    });
+    setQrCodeFile(null);
+    setQrCodePreview(null);
+  };
+
+  const handleSettingsInputChange = (e) => {
+    const { name, value, checked, type } = e.target;
+    setSettingsFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleQrCodeChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrCodePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitSettings = async () => {
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const data = {
+        ...settingsFormData,
+        ...(qrCodeFile && { qr_code_image: qrCodeFile }),
+      };
+
+      if (editingSettings) {
+        await apiService.updatePaymentSettings(editingSettings.settings_id, data);
+        setSuccess('Payment settings updated successfully!');
+      } else {
+        await apiService.createPaymentSettings(data);
+        setSuccess('Payment settings created successfully!');
+      }
+
+      handleCloseSettingsDialog();
+      fetchPaymentSettings();
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save payment settings');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteSettingsClick = (settings) => {
+    setSettingsToDelete(settings);
+    setDeleteSettingsDialogOpen(true);
+  };
+
+  const handleDeleteSettingsConfirm = async () => {
+    if (!settingsToDelete) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      await apiService.deletePaymentSettings(settingsToDelete.settings_id);
+      setSuccess('Payment settings deleted successfully!');
+      setDeleteSettingsDialogOpen(false);
+      setSettingsToDelete(null);
+      fetchPaymentSettings();
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete payment settings');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -387,6 +522,120 @@ export default function AdminPayments() {
             {success}
           </Alert>
         )}
+
+        {/* Payment Settings Section */}
+        <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ bgcolor: alpha('#ff9800', 0.1), color: 'warning.main' }}>
+                <Settings />
+              </Avatar>
+              <Box>
+                <Typography variant="h5" fontWeight="bold">
+                  Payment Settings
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Configure UPI ID, UPI Number, and QR Code
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenSettingsDialog()}
+              sx={{ borderRadius: 2 }}
+            >
+              Add Settings
+            </Button>
+          </Box>
+
+          {paymentSettings.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <QrCode2 sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                No payment settings configured yet. Add your UPI details and QR code.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {paymentSettings.map((settings) => (
+                <Grid item xs={12} md={6} key={settings.settings_id}>
+                  <Card 
+                    elevation={0} 
+                    sx={{ 
+                      border: '1px solid', 
+                      borderColor: settings.is_active ? 'success.main' : 'divider',
+                      borderRadius: 2,
+                      position: 'relative'
+                    }}
+                  >
+                    <CardContent>
+                      {settings.is_active && (
+                        <Chip 
+                          label="Active" 
+                          color="success" 
+                          size="small" 
+                          sx={{ position: 'absolute', top: 16, right: 16 }}
+                        />
+                      )}
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          UPI ID
+                        </Typography>
+                        <Typography variant="body1" fontWeight="500">
+                          {settings.upi_id || 'Not set'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          UPI Number
+                        </Typography>
+                        <Typography variant="body1" fontWeight="500">
+                          {settings.upi_number || 'Not set'}
+                        </Typography>
+                      </Box>
+                      {settings.qr_code_url && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            QR Code
+                          </Typography>
+                          <Box 
+                            component="img" 
+                            src={settings.qr_code_url} 
+                            alt="QR Code"
+                            sx={{ 
+                              width: 120, 
+                              height: 120, 
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1
+                            }}
+                          />
+                        </Box>
+                      )}
+                      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleOpenSettingsDialog(settings)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteSettingsClick(settings)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Paper>
 
         {/* Statistics Cards */}
         {statistics && (
@@ -861,6 +1110,200 @@ export default function AdminPayments() {
               disabled={submitting}
             >
               {submitting ? 'Deleting...' : 'Delete Payment'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Payment Settings Dialog */}
+        <Dialog
+          open={settingsDialogOpen}
+          onClose={handleCloseSettingsDialog}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ bgcolor: alpha('#ff9800', 0.1), color: 'warning.main' }}>
+                <Settings />
+              </Avatar>
+              <Typography variant="h6" fontWeight="bold">
+                {editingSettings ? 'Edit Payment Settings' : 'Add Payment Settings'}
+              </Typography>
+            </Box>
+          </DialogTitle>
+          <Divider />
+          <DialogContent sx={{ pt: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="UPI ID"
+                  name="upi_id"
+                  value={settingsFormData.upi_id}
+                  onChange={handleSettingsInputChange}
+                  placeholder="e.g., merchant@paytm"
+                  helperText="Enter UPI ID for payments"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="UPI Number"
+                  name="upi_number"
+                  value={settingsFormData.upi_number}
+                  onChange={handleSettingsInputChange}
+                  placeholder="e.g., 9876543210"
+                  helperText="Enter UPI mobile number"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<Upload />}
+                    sx={{ justifyContent: 'flex-start', py: 1.5 }}
+                  >
+                    {qrCodeFile ? qrCodeFile.name : 'Upload QR Code Image'}
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={handleQrCodeChange}
+                    />
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1 }}>
+                    Upload a QR code image for payments
+                  </Typography>
+                </FormControl>
+              </Grid>
+              {qrCodePreview && (
+                <Grid item xs={12}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      QR Code Preview
+                    </Typography>
+                    <Box 
+                      component="img" 
+                      src={qrCodePreview} 
+                      alt="QR Code Preview"
+                      sx={{ 
+                        maxWidth: 200, 
+                        maxHeight: 200,
+                        border: '2px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 1
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              )}
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      checked={settingsFormData.is_active}
+                      onChange={handleSettingsInputChange}
+                      id="is-active-checkbox"
+                    />
+                    <label htmlFor="is-active-checkbox">
+                      <Typography variant="body2">
+                        Set as active payment settings
+                      </Typography>
+                    </label>
+                  </Box>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <Divider />
+          <DialogActions sx={{ p: 2.5, gap: 1 }}>
+            <Button
+              onClick={handleCloseSettingsDialog}
+              variant="outlined"
+              sx={{ borderRadius: 2 }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitSettings}
+              variant="contained"
+              startIcon={<Save />}
+              sx={{ borderRadius: 2, minWidth: 120 }}
+              disabled={submitting}
+            >
+              {submitting ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Payment Settings Dialog */}
+        <Dialog
+          open={deleteSettingsDialogOpen}
+          onClose={() => !submitting && setDeleteSettingsDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ bgcolor: alpha('#f44336', 0.1), color: 'error.main' }}>
+                <DeleteIcon />
+              </Avatar>
+              <Typography variant="h6" fontWeight="bold">
+                Delete Payment Settings
+              </Typography>
+            </Box>
+          </DialogTitle>
+          <Divider />
+          <DialogContent sx={{ pt: 3 }}>
+            <Typography variant="body1" gutterBottom>
+              Are you sure you want to delete these payment settings?
+            </Typography>
+            {settingsToDelete && (
+              <Paper
+                elevation={0}
+                sx={{ p: 2, mt: 2, bgcolor: alpha('#f44336', 0.05), borderRadius: 2 }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  Settings #{settingsToDelete.settings_id}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  UPI ID: {settingsToDelete.upi_id || 'N/A'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  UPI Number: {settingsToDelete.upi_number || 'N/A'}
+                </Typography>
+              </Paper>
+            )}
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              This action cannot be undone.
+            </Alert>
+          </DialogContent>
+          <Divider />
+          <DialogActions sx={{ p: 2.5, gap: 1 }}>
+            <Button
+              onClick={() => setDeleteSettingsDialogOpen(false)}
+              variant="outlined"
+              sx={{ borderRadius: 2 }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteSettingsConfirm}
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              sx={{ borderRadius: 2, minWidth: 120 }}
+              disabled={submitting}
+            >
+              {submitting ? 'Deleting...' : 'Delete Settings'}
             </Button>
           </DialogActions>
         </Dialog>

@@ -1,0 +1,42 @@
+services:
+  # Web Service
+  - type: web
+    name: sewa-portal-backend
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: "pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn sewa_portal.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: DROPBOX_APP_KEY
+        sync: false
+      - key: DROPBOX_APP_SECRET
+        sync: false
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false
+
+  # Automatic Database Backup - Runs every 2 days at midnight UTC
+  # Note: Cron jobs on free tier must have environment variables set manually in dashboard
+  - type: cron
+    name: database-backup
+    env: python
+    plan: free
+    region: oregon
+    schedule: "0 0 */2 * *"  # Every 2 days at midnight UTC
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python manage.py backup_database --cleanup"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DROPBOX_APP_KEY
+        sync: false
+      - key: DROPBOX_APP_SECRET
+        sync: false
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false

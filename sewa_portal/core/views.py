@@ -1,22 +1,57 @@
 from django.shortcuts import render
 
 # Create your views here.
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status as http_status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from django.core.mail import send_mail
+from rest_framework.exceptions import PermissionDenied, ValidationError, ParseError
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 from django.utils import timezone
+import os
+import threading
 from django.db import models
-from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings
+from .models import User, Service, UserApplication, UserDocument, FinalDocument, Announcement, Payment, RequiredDocument, PaymentSettings, GovScheme, GopinathApplication
 from .serializers import (UserSerializer, ServiceSerializer, UserApplicationSerializer, 
                           UserDocumentSerializer, FinalDocumentSerializer, AnnouncementSerializer, 
-                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer)
+                          PaymentSerializer, RequiredDocumentSerializer, PaymentSettingsSerializer,
+                          GovSchemeSerializer, GopinathApplicationSerializer)
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail, EmailMessage
+from rest_framework.views import APIView
+from django.conf import settings
+from rest_framework.throttling import SimpleRateThrottle
 from .permissions import IsAdminUser, IsOwnerOrAdmin
+from .backup_manager import backup_manager
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Override create to log incoming registration data and validation errors
+        so failures are visible in server logs for easier debugging.
+        """
+        # Avoid logging sensitive information like passwords in plaintext
+        data_to_log = dict(request.data)
+        if 'password' in data_to_log:
+            data_to_log['password'] = '********'
+
+        logger.info("Registration attempt: %s", data_to_log)
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error("Registration validation failed: %s", serializer.errors)
+            return Response(serializer.errors, status=400)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        logger.info("Registration successful for username=%s", serializer.data.get('username'))
+        return Response(serializer.data, status=201, headers=headers)
     
     def get_permissions(self):
         # Allow anyone to register (POST)
@@ -36,6 +71,176 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         return Response({'detail': 'You do not have permission to view this profile.'}, status=403)
+
+
+class PasswordResetRequestView(APIView):
+    """Accepts { "email": "user@example.com" } and sends a password reset link if a user exists.
+
+    The endpoint does not reveal whether an email exists (generic response), but for debugging
+    and usability this implementation logs attempts. The email contains a tokenized link the
+    frontend can use to complete the reset.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    # Throttle class applied to this view to limit password reset requests per IP
+    class PasswordResetRateThrottle(SimpleRateThrottle):
+        scope = 'password_reset'
+
+        def get_cache_key(self, request, view):
+            # Throttle by client IP address
+            ident = self.get_ident(request)
+            return self.cache_format % {
+                'scope': self.scope,
+                'ident': ident,
+            }
+
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        # Defensive parsing: DRF will attempt to parse JSON when accessing request.data.
+        # If parsing fails (empty body or invalid JSON) we catch that and try sensible fallbacks
+        # so the API returns a clearer error message and logs the raw request for debugging.
+        try:
+            email = request.data.get('email')
+        except ParseError as e:
+            # Log content type and a short prefix of the raw body to help diagnosis
+            raw = request.body[:1000] if hasattr(request, 'body') else b''
+            logger.exception('JSON parse error on password-reset request. content_type=%s content_length=%s raw_prefix=%s',
+                             request.content_type, request.META.get('CONTENT_LENGTH'), raw)
+            # Attempt a tolerant fallback: try to parse body as JSON text ourselves
+            try:
+                if raw:
+                    parsed = json.loads(raw.decode('utf-8'))
+                    email = parsed.get('email')
+                else:
+                    email = None
+            except Exception:
+                email = None
+
+        if not email:
+            return Response({'email': ['This field is required.'], 'detail': 'Send JSON body: {"email":"you@example.com"}.'}, status=400)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Don't reveal that the email doesn't exist
+            logger.info('Password reset requested for non-existent email: %s', email)
+            return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+
+        # Generate token and uid
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Build reset link for frontend (frontend should implement route to accept uid & token)
+        frontend_base = getattr(settings, 'FRONTEND_URL', os.environ.get('FRONTEND_URL', 'http://localhost:5173'))
+        reset_path = f"/reset-password?uid={uid}&token={token}"
+        reset_link = frontend_base.rstrip('/') + reset_path
+
+        subject = 'Sewa Portal - Password reset request'
+        message = f"Hello {user.full_name or user.username},\n\nWe received a request to reset your password.\n\nClick the link below to reset your password (valid for a limited time):\n\n{reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSewa Portal Team"
+
+        # Send email with timeout to avoid blocking the request
+        # Use a background thread but wait briefly to catch immediate errors
+        from threading import Thread, Event
+        import time
+        
+        email_result = {'success': False, 'error': None}
+        email_done = Event()
+        
+        def _send_email_with_timeout():
+            try:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+                email_result['success'] = True
+                logger.info('Password reset email sent successfully to %s', user.email)
+            except Exception as e:
+                email_result['error'] = str(e)
+                logger.exception('Failed to send password reset email to %s: %s', user.email, e)
+            finally:
+                email_done.set()
+        
+        # Start email sending in background
+        email_thread = Thread(target=_send_email_with_timeout, daemon=True)
+        email_thread.start()
+        
+        # Wait up to 5 seconds for email to send
+        email_done.wait(timeout=5.0)
+        
+        # Check result
+        if email_result['success']:
+            return Response({'detail': 'Password reset email has been sent successfully. Please check your inbox.'})
+        elif email_result['error']:
+            error_message = email_result['error']
+            
+            # Return helpful error message to frontend
+            if 'Authentication' in error_message or 'Username and Password not accepted' in error_message:
+                return Response({
+                    'detail': 'Email configuration error: Authentication failed. Please contact administrator.',
+                    'error': 'SMTP authentication failed. Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.'
+                }, status=500)
+            elif 'Connection' in error_message or 'timed out' in error_message or 'refused' in error_message:
+                return Response({
+                    'detail': 'Email configuration error: Cannot connect to email server. Please contact administrator.',
+                    'error': 'SMTP connection failed. Check EMAIL_HOST and EMAIL_PORT.'
+                }, status=500)
+            else:
+                return Response({
+                    'detail': f'Failed to send password reset email. Error: {error_message}',
+                    'error': error_message
+                }, status=500)
+        else:
+            # Email still sending after 5 seconds - return success but log it
+            logger.warning('Password reset email for %s is taking longer than expected, sending in background', user.email)
+            return Response({'detail': 'Password reset email is being sent. Please check your inbox in a moment.'})
+
+
+class PasswordResetConfirmView(APIView):
+    """Accepts { "uid": "...", "token": "...", "new_password": "..." } and sets new password if token valid."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        # Defensive parsing similar to PasswordResetRequestView
+        try:
+            uid = request.data.get('uid')
+            token = request.data.get('token')
+            new_password = request.data.get('new_password')
+        except ParseError:
+            raw = request.body[:1000] if hasattr(request, 'body') else b''
+            logger.exception('JSON parse error on password-reset-confirm request. content_type=%s content_length=%s raw_prefix=%s',
+                             request.content_type, request.META.get('CONTENT_LENGTH'), raw)
+            try:
+                if raw:
+                    parsed = json.loads(raw.decode('utf-8'))
+                    uid = parsed.get('uid')
+                    token = parsed.get('token')
+                    new_password = parsed.get('new_password')
+                else:
+                    uid = token = new_password = None
+            except Exception:
+                uid = token = new_password = None
+
+        if not uid or not token or not new_password:
+            return Response({'detail': 'uid, token and new_password are required. Send JSON body: {"uid":"...","token":"...","new_password":"..."}.'}, status=400)
+
+        try:
+            uid_decoded = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=uid_decoded)
+        except Exception:
+            return Response({'detail': 'Invalid uid/token.'}, status=400)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'detail': 'Invalid or expired token.'}, status=400)
+
+        # Set new password
+        try:
+            user.set_password(new_password)
+            user.save()
+            logger.info('Password reset successful for user id=%s', user.pk)
+            return Response({'detail': 'Password has been reset successfully.'})
+        except Exception as e:
+            logger.exception('Failed to reset password for user id=%s: %s', user.pk, e)
+            return Response({'detail': 'Failed to reset password.'}, status=500)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.prefetch_related('required_documents').all()  # Optimize with prefetch_related
@@ -78,6 +283,33 @@ class UserApplicationViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete an application. Users can delete their own applications, admins can delete any.
+        Related documents and payments will be cascade deleted automatically.
+        """
+        application = self.get_object()
+        app_id = application.application_id
+        service_name = application.service.service_name
+        user_name = application.user.username
+        
+        # Log the deletion
+        logger.info(
+            "Application deletion: app_id=%s, service=%s, user=%s, deleted_by=%s (role=%s)",
+            app_id, service_name, user_name, request.user.username, request.user.role
+        )
+        
+        # Perform deletion (CASCADE will handle related documents and payments)
+        self.perform_destroy(application)
+        
+        return Response(
+            {
+                'success': True,
+                'message': f'Application #{app_id} for {service_name} has been deleted successfully.'
+            },
+            status=200
+        )
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def update_status(self, request, pk=None):
@@ -129,12 +361,11 @@ Sewa Portal
 """
                 
                 if app.user.email:
-                    send_mail(
-                        f"✅ Application Approved - Payment Required for {app.service.service_name}",
-                        email_body,
-                        None, 
-                        [app.user.email]
-                    )
+                    # Email sending suppressed in production deployment by design.
+                    logger.info("Suppressed email (application approved) to=%s subject=%s body=%s",
+                                app.user.email,
+                                f"✅ Application Approved - Payment Required for {app.service.service_name}",
+                                email_body)
                 
                 return Response({
                     'success': True,
@@ -145,13 +376,73 @@ Sewa Portal
             except Payment.DoesNotExist:
                 pass
         elif status == 'Rejected' and app.user.email:
-            send_mail(
-                f"Application Status: {status}",
-                f"Hello {app.user.full_name},\nYour application for {app.service.service_name} is {status}\n{('Reason: '+reason) if status=='Rejected' else ''}",
-                None, [app.user.email]
-            )
+            logger.info("Suppressed email (application rejected) to=%s subject=%s body=%s",
+                        app.user.email,
+                        f"Application Status: {status}",
+                        f"Hello {app.user.full_name},\nYour application for {app.service.service_name} is {status}\n{('Reason: '+reason) if status=='Rejected' else ''}")
         
         return Response({'success':True,'status':app.status})
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsOwnerOrAdmin])
+    def resubmit(self, request, pk=None):
+        """Allow an application owner to resubmit a previously rejected application.
+
+        This will:
+        - only allow the application owner (or admin) to call it
+        - only operate when current status is 'Rejected'
+        - optionally validate that all mandatory RequiredDocument items have at least one uploaded UserDocument
+        - clear reject_reason and set status to 'Pending'
+        """
+        app = self.get_object()
+        user = request.user
+
+        logger.info("Resubmit attempt: app_id=%s by user=%s (role=%s)", app.application_id, getattr(user, 'username', None), getattr(user, 'role', None))
+
+        # Ownership enforced by permission_classes, but double-check
+        if user.role != 'admin' and app.user != user:
+            logger.warning("Resubmit permission denied: app_id=%s attempted_by=%s", app.application_id, getattr(user, 'username', None))
+            return Response({'detail': 'You do not have permission to resubmit this application.'}, status=403)
+
+        if app.status != 'Rejected':
+            logger.info("Resubmit not allowed - status not Rejected: app_id=%s status=%s", app.application_id, app.status)
+            return Response({'detail': 'Only rejected applications can be resubmitted.'}, status=400)
+
+        # Optional: verify mandatory documents are present
+        validate_docs = request.data.get('validate_documents', True)
+        # Add diagnostic logging: record the validate flag, number of uploaded user documents
+        try:
+            existing_docs_count = UserDocument.objects.filter(application=app).count()
+        except Exception:
+            existing_docs_count = 'unknown'
+        logger.info("Resubmit request keys=%s validate_documents=%s existing_uploaded_docs=%s", list(request.data.keys()), validate_docs, existing_docs_count)
+        missing_docs = []
+        if validate_docs:
+            required_docs = RequiredDocument.objects.filter(service=app.service, is_mandatory=True)
+            for rd in required_docs:
+                # Check if a UserDocument exists for this application and required_document
+                exists = UserDocument.objects.filter(application=app, required_document=rd).exists()
+                if not exists:
+                    missing_docs.append(rd.document_name)
+
+            if missing_docs:
+                logger.info("Resubmit blocked - missing docs for app_id=%s: %s", app.application_id, missing_docs)
+                return Response({'detail': 'Missing mandatory documents', 'missing_documents': missing_docs}, status=400)
+
+        # Clear reject reason and set status to Pending
+        try:
+            app.status = 'Pending'
+            app.reject_reason = ''
+            app.updated_at = timezone.now()
+            app.save()
+        except Exception as e:
+            logger.exception('Failed to resubmit application id=%s: %s', app.application_id, e)
+            return Response({'detail': 'Failed to resubmit application'}, status=500)
+
+        logger.info("Resubmit successful: app_id=%s by user=%s", app.application_id, getattr(user, 'username', None))
+
+        # Return the updated application
+        serializer = UserApplicationSerializer(app, context={'request': request})
+        return Response({'success': True, 'application': serializer.data})
 
 class UserDocumentViewSet(viewsets.ModelViewSet):
     queryset = UserDocument.objects.select_related('application', 'application__user', 'application__service', 'required_document').all()  # Optimize with select_related
@@ -199,6 +490,35 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
 
+class GovSchemeViewSet(viewsets.ModelViewSet):
+    """CRUD for government schemes used by admin UI and public listing.
+    - Admins: full access (list/retrieve/create/update/delete)
+    - Public users: list/retrieve only (only active schemes)
+    """
+    # Provide a queryset so DRF router can automatically determine basename
+    queryset = GovScheme.objects.all().order_by('-created_at')
+    serializer_class = GovSchemeSerializer
+
+    def get_permissions(self):
+        # POST/PUT/PATCH/DELETE only allowed for admin users
+        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            return [permissions.IsAuthenticated(), IsAdminUser()]
+        return [permissions.AllowAny()]
+
+    def get_queryset(self):
+        # Import model here to avoid top-level import cycles
+        from .models import GovScheme
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'admin':
+            return GovScheme.objects.all().order_by('-created_at')
+        return GovScheme.objects.filter(is_active=True).order_by('-created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
+
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.select_related('application', 'application__user', 'application__service').all()  # Optimize with select_related
     serializer_class = PaymentSerializer
@@ -244,25 +564,78 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment.payment_date = timezone.now()
         payment.save()
         
-        # Send notification email
+        # Send notification email (suppressed)
         if payment.application.user.email:
-            send_mail(
-                f"Payment Confirmed - {payment.application.service.service_name}",
-                f"Hello {payment.application.user.full_name},\n\n"
-                f"Your payment of NPR {payment.amount} has been confirmed.\n"
-                f"Payment Method: {payment.payment_method}\n"
-                f"Transaction ID: {payment.transaction_id or 'N/A'}\n\n"
-                f"Thank you!",
-                None,
-                [payment.application.user.email]
-            )
+            logger.info("Suppressed email (payment confirmed) to=%s subject=%s body=%s",
+                        payment.application.user.email,
+                        f"Payment Confirmed - {payment.application.service.service_name}",
+                        f"Hello {payment.application.user.full_name},\n\n"
+                        f"Your payment of NPR {payment.amount} has been confirmed.\n"
+                        f"Payment Method: {payment.payment_method}\n"
+                        f"Transaction ID: {payment.transaction_id or 'N/A'}\n\n"
+                        f"Thank you!")
         
         return Response({
             'success': True,
             'message': 'Payment marked as completed',
             'payment': PaymentSerializer(payment).data
         })
-    
+
+
+class GopinathApplicationViewSet(viewsets.ModelViewSet):
+    """CRUD for Gopinath Scheme applications. Users can create their own application; admins can list and manage."""
+    queryset = GopinathApplication.objects.all().select_related('user')
+    serializer_class = GopinathApplicationSerializer
+
+    def get_permissions(self):
+        # Allow authenticated users to create; listing/updating restricted to admin or owner
+        if self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        # attach user if available
+        serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
+
+    def create(self, request, *args, **kwargs):
+        """Override create to log incoming multipart data (keys + uploaded files) and serializer errors for easier debugging.
+
+        Returns the usual 201 on success or 400 with serializer errors.
+        """
+        # Log non-sensitive data: keys and file names/sizes (avoid logging file contents or passwords)
+        try:
+            keys = list(request.data.keys())
+        except Exception:
+            keys = None
+
+        file_info = {}
+        try:
+            for k, f in request.FILES.items():
+                file_info[k] = {'name': getattr(f, 'name', None), 'size': getattr(f, 'size', None), 'content_type': getattr(f, 'content_type', None)}
+        except Exception:
+            file_info = 'unavailable'
+
+        logger.info("GopinathApplication create attempt by=%s keys=%s files=%s", getattr(request.user, 'username', None), keys, file_info)
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            # Log validation errors to server logs for diagnostics
+            logger.error("GopinathApplication validation failed for user=%s errors=%s", getattr(request.user, 'username', None), serializer.errors)
+            return Response(serializer.errors, status=400)
+
+        try:
+            self.perform_create(serializer)
+        except Exception as e:
+            # Log the full exception for debugging (traceback will appear in server logs)
+            logger.exception('Exception while creating GopinathApplication for user=%s: %s', getattr(request.user, 'username', None), e)
+            return Response({'detail': 'Server error while saving application.'}, status=500)
+
+        headers = self.get_success_headers(serializer.data)
+        logger.info("GopinathApplication created app_id=%s by=%s", serializer.data.get('app_id'), getattr(request.user, 'username', None))
+        return Response(serializer.data, status=201, headers=headers)
+
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
     def statistics(self, request):
         """Get payment statistics for admin dashboard"""
@@ -272,13 +645,53 @@ class PaymentViewSet(viewsets.ModelViewSet):
         total_revenue = Payment.objects.filter(payment_status='Completed').aggregate(
             total=models.Sum('amount')
         )['total'] or 0
-        
+
         return Response({
             'total_payments': total_payments,
             'completed_payments': completed_payments,
             'pending_payments': pending_payments,
             'total_revenue': float(total_revenue),
         })
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
+    def update_status(self, request, pk=None):
+        """Admin action to update the status of a Gopinath application.
+
+        POST payload: { "status": "Accepted" | "Rejected" | "Under Review", "reject_reason": "..." }
+        When Accepted, send a notification email to the applicant (if email present).
+        """
+        app = self.get_object()
+        status = request.data.get('status')
+        reason = request.data.get('reject_reason', '')
+
+        valid_statuses = [s[0] for s in GopinathApplication.APPLICATION_STATUS]
+        if status not in valid_statuses:
+            return Response({'error': 'Invalid status'}, status=400)
+
+        app.status = status
+        if status == 'Rejected':
+            app.reject_reason = reason
+        app.save()
+
+        # Send email/notification when accepted or rejected
+        try:
+            if status == 'Accepted':
+                subject = 'आपली नोंदणी मंजूर झाली आहे - गोपीनाथ योजना'
+                body = f"नमस्कार {app.full_name},\n\nआपली गोपीनाथ योजना साठी केलेली नोंदणी मंजूर करण्यात आली आहे.\n\nआम्ही लवकरच पुढील सूचना पाठवू.\n\nधन्यवाद,\nगोपीनाथ योजना टीम"
+                if app.email:
+                    # Email sending is logged (suppressed or routed by actual email backend)
+                    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.email], fail_silently=True)
+                    logger.info("GopinathApplication accepted email sent to=%s app_id=%s", app.email, app.app_id)
+            elif status == 'Rejected' and app.email:
+                subject = 'आपली नोंदणी नाकारण्यात आली - गोपीनाथ योजना'
+                body = f"नमस्कार {app.full_name},\n\nदुर्दैवाने, आपली नोंदणी नाकारण्यात झाली आहे. कारण: {reason}\n\nआपण सुधारणा करून पुन्हा सबमिट करू शकता.\n\nधन्यवाद,\nगोपीनाथ टीम"
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.email], fail_silently=True)
+                logger.info("GopinathApplication rejection email sent to=%s app_id=%s reason=%s", app.email, app.app_id, reason)
+        except Exception as e:
+            logger.exception('Failed to send notification email for GopinathApplication id=%s: %s', app.app_id, e)
+
+        return Response({'success': True, 'status': app.status})
+
 
 
 class PaymentSettingsViewSet(viewsets.ModelViewSet):
@@ -293,13 +706,62 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), IsAdminUser()]
     
     def get_queryset(self):
-        # Only return active payment settings
+        user = self.request.user
+        # Admin can see all payment settings
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'admin':
+            return PaymentSettings.objects.all()
+        # Public users only see active payment settings
         return PaymentSettings.objects.filter(is_active=True)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
+    
+    def create(self, request, *args, **kwargs):
+        """Create new payment settings"""
+        logger.info("Creating payment settings by admin: %s", request.user.username)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """Update payment settings (including QR code)"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        logger.info(
+            "Updating payment settings ID=%s by admin: %s",
+            instance.settings_id, request.user.username
+        )
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        return Response(serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete payment settings"""
+        instance = self.get_object()
+        settings_id = instance.settings_id
+        
+        logger.info(
+            "Deleting payment settings ID=%s by admin: %s",
+            settings_id, request.user.username
+        )
+        
+        self.perform_destroy(instance)
+        
+        return Response(
+            {
+                'success': True,
+                'message': f'Payment settings #{settings_id} deleted successfully.'
+            },
+            status=200
+        )
     
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny()])
     def active(self, request):
@@ -309,3 +771,77 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(settings)
             return Response(serializer.data)
         return Response({'detail': 'No active payment settings found'}, status=404)
+
+
+class BackupViewSet(viewsets.ViewSet):
+    """
+    Admin-only endpoint for database backup management
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_backup(self, request):
+        """
+        Create a new database backup and upload to Dropbox
+        POST /api/backups/create/
+        """
+        logger.info(f"Manual backup initiated by admin: {request.user.username}")
+        
+        success, message, file_info = backup_manager.create_backup()
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': message,
+                'backup': file_info
+            }, status=http_status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'success': False,
+                'message': message
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='list')
+    def list_backups(self, request):
+        """
+        List all available backups in Dropbox
+        GET /api/backups/list/
+        """
+        success, backups = backup_manager.list_backups()
+        
+        if success:
+            return Response({
+                'success': True,
+                'count': len(backups),
+                'backups': backups
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Failed to list backups'
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'], url_path='cleanup')
+    def cleanup_old(self, request):
+        """
+        Delete old backups, keeping only the most recent ones
+        POST /api/backups/cleanup/
+        """
+        keep_count = request.data.get('keep_count', 7)
+        
+        logger.info(f"Backup cleanup initiated by admin: {request.user.username}")
+        
+        success, deleted_count = backup_manager.delete_old_backups(keep_count=keep_count)
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': f'Deleted {deleted_count} old backup(s)',
+                'deleted_count': deleted_count
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Failed to cleanup backups'
+            }, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+

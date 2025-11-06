@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
-  Box,
   Paper,
   Typography,
   TextField,
@@ -12,6 +11,7 @@ import {
   InputAdornment,
   IconButton,
   Grid,
+  Box,
 } from '@mui/material';
 import { Visibility, VisibilityOff, PersonAdd } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';

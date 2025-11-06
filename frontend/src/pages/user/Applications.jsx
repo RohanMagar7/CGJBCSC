@@ -20,8 +20,14 @@ import {
   FormControl,
   InputLabel,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  IconButton,
 } from '@mui/material';
-import { Search, Visibility } from '@mui/icons-material';
+import { Search, Visibility, Delete } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -32,8 +38,11 @@ const Applications = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, application: null });
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -85,6 +94,38 @@ const Applications = () => {
     return service?.service_name || 'Unknown Service';
   };
 
+  const handleDeleteClick = (application) => {
+    setDeleteDialog({ open: true, application });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.application) return;
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      await apiService.deleteApplication(deleteDialog.application.application_id);
+      setSuccess(`Application #${deleteDialog.application.application_id} deleted successfully!`);
+      setDeleteDialog({ open: false, application: null });
+      
+      // Refresh the applications list
+      fetchData();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete application');
+      setDeleteDialog({ open: false, application: null });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({ open: false, application: null });
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -102,6 +143,12 @@ const Applications = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {success}
         </Alert>
       )}
 
@@ -176,14 +223,24 @@ const Applications = () => {
                     <StatusBadge status={app.status} />
                   </TableCell>
                   <TableCell align="center">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Visibility />}
-                      onClick={() => navigate(`/applications/${app.application_id}`)}
-                    >
-                      View
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Visibility />}
+                        onClick={() => navigate(`/applications/${app.application_id}`)}
+                      >
+                        View
+                      </Button>
+                      <IconButton
+                        color="error"
+                        size="small"
+                        onClick={() => handleDeleteClick(app)}
+                        title="Delete Application"
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
@@ -191,6 +248,48 @@ const Applications = () => {
           </Table>
         </TableContainer>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Application</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this application?
+            {deleteDialog.application && (
+              <>
+                <br /><br />
+                <strong>Application ID:</strong> #{deleteDialog.application.application_id}
+                <br />
+                <strong>Service:</strong> {getServiceName(deleteDialog.application.service)}
+                <br />
+                <strong>Status:</strong> {deleteDialog.application.status}
+                <br /><br />
+                <span style={{ color: 'red' }}>
+                  This action cannot be undone. All related documents and payment records will also be deleted.
+                </span>
+              </>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

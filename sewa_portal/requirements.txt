@@ -1,0 +1,29 @@
+# Core Django and deployment dependencies
+Django==5.2.7
+gunicorn==21.2.0
+whitenoise==6.5.0
+dj-database-url==1.0.0
+psycopg2-binary==2.9.11
+
+# Django REST Framework and authentication
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.10.1
+
+# CORS support
+django-cors-headers==4.9.0
+
+# Storage backends
+django-storages==1.14.4
+dropbox==12.0.2
+
+# Core Python dependencies
+asgiref==3.10.0
+sqlparse==0.5.3
+pillow==11.3.0
+pytz==2025.2
+python-dotenv==1.0.1
+# Optional: MongoDB support (if needed)
+# djongo==1.3.7
+# pymongo==3.11.4
+# dnspython==2.8.0

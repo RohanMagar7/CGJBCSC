@@ -11,7 +11,9 @@ except Exception:
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
+import logging
+
+logger = logging.getLogger(__name__)
 
 # -------------------------
 # User Manager
@@ -43,8 +45,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, editable=False)
     full_name = models.CharField(max_length=100, db_index=True)  # Index for name searches
     username = models.CharField(max_length=50, unique=True, db_index=True)  # Index for login
-    email = models.EmailField(blank=True, null=True, db_index=True)  # Index for email lookups
-    phone_number = models.CharField(max_length=15, db_index=True)  # Index for phone searches
+    # Make email and phone unique so duplicates are prevented at the DB level
+    email = models.EmailField(blank=True, null=True, unique=True, db_index=True)  # Index for email lookups
+    phone_number = models.CharField(max_length=15, unique=True, db_index=True)  # Index for phone searches
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user', db_index=True)  # Index for role filtering
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True, db_index=True)  # Index for active user queries
@@ -213,10 +216,10 @@ class Payment(models.Model):
 # File Validation
 # -------------------------
 def validate_file(file):
-    max_size = 5 * 1024 * 1024  # 5MB
+    max_size = 250 * 1024  # 250KB
     allowed_types = ['application/pdf', 'image/jpeg', 'image/png']
     if file.size > max_size:
-        raise ValidationError("File too large. Max size 5MB.")
+        raise ValidationError("File too large. Maximum file size is 250KB.")
     if file.content_type not in allowed_types:
         raise ValidationError("Unsupported file type. Only PDF, JPEG, PNG allowed.")
 
@@ -266,13 +269,12 @@ def update_application_status(sender, instance, created, **kwargs):
         app = instance.application
         app.status = 'Completed'
         app.save()
-        # Email
+        # Email suppressed - log instead
         if app.user.email:
-            send_mail(
-                f"Your application for {app.service.service_name} is completed",
-                f"Hello {app.user.full_name},\nYour application is COMPLETED.",
-                None, [app.user.email]
-            )
+            logger.info("Suppressed email (application completed) to=%s subject=%s body=%s",
+                        app.user.email,
+                        f"Your application for {app.service.service_name} is completed",
+                        f"Hello {app.user.full_name},\nYour application is COMPLETED.")
 
 # -------------------------
 # Announcement Model
@@ -303,3 +305,142 @@ class Announcement(models.Model):
     
     def __str__(self):
         return self.title
+
+
+# -------------------------
+# Government Scheme Model
+# -------------------------
+class GovScheme(models.Model):
+    CATEGORY_CHOICES = (
+        ('Education', 'Education'),
+        ('Health', 'Health'),
+        ('Agriculture', 'Agriculture'),
+        ('Employment', 'Employment'),
+        ('Housing', 'Housing'),
+        ('Business', 'Business'),
+        ('Social Welfare', 'Social Welfare'),
+    )
+
+    scheme_id = models.AutoField(primary_key=True, editable=False)
+    name = models.CharField(max_length=255, db_index=True)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='Social Welfare', db_index=True)
+    description = models.TextField(blank=True)
+    eligibility = models.TextField(blank=True)
+    benefits = models.TextField(blank=True)
+    # Store lists as JSON for documents and steps
+    try:
+        JSONField = models.JSONField
+    except AttributeError:
+        JSONField = None
+
+    if JSONField:
+        documents = JSONField(default=list, blank=True)
+        how_to_apply = JSONField(default=list, blank=True)
+    else:
+        # Fallback to TextField storing JSON string (rare, modern Django should have JSONField)
+        documents = models.TextField(blank=True, default='[]')
+        how_to_apply = models.TextField(blank=True, default='[]')
+
+    official_website = models.URLField(blank=True, null=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['category', 'is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def id(self):
+        """Alias to match frontend expectations (scheme.id)"""
+        return self.scheme_id
+
+
+# -------------------------
+# Gopinath Scheme Application
+# -------------------------
+class GopinathApplication(models.Model):
+    APPLICATION_STATUS = (
+        ('Submitted', 'Submitted'),
+        ('Under Review', 'Under Review'),
+        ('Accepted', 'Accepted'),
+        ('Rejected', 'Rejected'),
+    )
+
+    app_id = models.AutoField(primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+
+    # Personal Details
+    full_name = models.CharField(max_length=200, db_index=True)
+    dob = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    mobile = models.CharField(max_length=15, db_index=True)
+    email = models.EmailField(blank=True, null=True)
+    aadhaar = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    passport_photo = models.FileField(upload_to='schemes/gopinath/photos/', validators=[validate_file], null=True, blank=True)
+
+    # Educational Details
+    college_name = models.CharField(max_length=255, blank=True)
+    college_address = models.TextField(blank=True)
+    course = models.CharField(max_length=200, blank=True)
+    study_year = models.CharField(max_length=50, blank=True)
+    college_id_number = models.CharField(max_length=100, blank=True)
+    college_id_card = models.FileField(upload_to='schemes/gopinath/college_id/', validators=[validate_file], null=True, blank=True)
+    # Contact number for college (frontend collects this)
+    college_contact = models.CharField(max_length=100, blank=True)
+
+    # Residence Details
+    current_address = models.TextField(blank=True)
+    native_place = models.CharField(max_length=255, blank=True)
+    residence_type = models.CharField(max_length=50, blank=True)  # hostel/room/rented
+    residence_name_address = models.TextField(blank=True)
+    # Additional residence details collected by the frontend
+    permanent_address = models.TextField(blank=True)
+    residence_proof_attached = models.BooleanField(default=False)
+
+    # Scheme Details
+    ration_card_number = models.CharField(max_length=100, blank=True)
+    ration_card_type = models.CharField(max_length=50, blank=True)
+    veg_nonveg = models.CharField(max_length=20, blank=True)
+    ration_card_file = models.FileField(upload_to='schemes/gopinath/ration_card/', validators=[validate_file], null=True, blank=True)
+
+    # Meal / canteen related fields collected on frontend
+    current_meal_location = models.CharField(max_length=255, blank=True)
+    why_need = models.TextField(blank=True)
+    near_canteen = models.CharField(max_length=10, blank=True)
+    expected_canteen_location = models.CharField(max_length=255, blank=True)
+
+    # Bank Details
+    bank_name = models.CharField(max_length=200, blank=True)
+    branch_name = models.CharField(max_length=200, blank=True)
+    account_number = models.CharField(max_length=64, blank=True)
+    ifsc = models.CharField(max_length=20, blank=True)
+    bank_passbook = models.FileField(upload_to='schemes/gopinath/bank_passbook/', validators=[validate_file], null=True, blank=True)
+
+    # Other attachments
+    aadhaar_file = models.FileField(upload_to='schemes/gopinath/aadhaar/', validators=[validate_file], null=True, blank=True)
+    fee_residence_proof = models.FileField(upload_to='schemes/gopinath/proofs/', validators=[validate_file], null=True, blank=True)
+    last_marksheet = models.FileField(upload_to='schemes/gopinath/marksheets/', validators=[validate_file], null=True, blank=True)
+
+    # Declarations
+    declaration = models.BooleanField(default=False)
+    signature = models.FileField(upload_to='schemes/gopinath/signatures/', validators=[validate_file], null=True, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=20, choices=APPLICATION_STATUS, default='Submitted', db_index=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['mobile', 'aadhaar']),
+            models.Index(fields=['-submitted_at']),
+        ]
+
+    def __str__(self):
+        return f"GopinathApplication #{self.app_id} - {self.full_name}"

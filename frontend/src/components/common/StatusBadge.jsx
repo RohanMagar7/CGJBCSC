@@ -26,6 +26,7 @@ const StatusBadge = ({ status }) => {
 
   return (
     <Chip
+      component="span"
       label={config.label}
       color={config.color}
       size="small"

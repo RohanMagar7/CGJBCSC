@@ -12,19 +12,26 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 // Eager load authentication pages (frequently accessed)
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Home from '../../docs/archive/Home';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import Home from './pages/user/Home'
 
 // Lazy load other pages for better initial load time
 const Applications = lazy(() => import('./pages/user/Applications'));
 const ApplicationDetail = lazy(() => import('./pages/user/ApplicationDetail'));
 const Services = lazy(() => import('./pages/user/Services'));
+const GovSchemesInfo = lazy(() => import('./pages/user/GovSchemesInfo'));
+const GopinathScheme = lazy(() => import('./pages/user/GopinathScheme'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminApplications = lazy(() => import('./pages/admin/AdminApplications'));
+const AdminGopinathApplications = lazy(() => import('./pages/admin/AdminGopinathApplications'));
+const AdminGopinathApplicationReview = lazy(() => import('./pages/admin/AdminGopinathApplicationReview'));
 const AdminApplicationReview = lazy(() => import('./pages/admin/AdminApplicationReview'));
 const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
+const AdminGovSchemes = lazy(() => import('./pages/admin/AdminGovSchemes'));
 
 // Component to handle root route based on user authentication
 const RootRoute = () => {
@@ -129,16 +136,23 @@ function App() {
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
                   <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+                  <Route path="/gov-schemes" element={<ProtectedRoute><GovSchemesInfo /></ProtectedRoute>} />
+                  <Route path="/gopinath-scheme" element={<ProtectedRoute><GopinathScheme /></ProtectedRoute>} />
                   <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
                   <Route path="/applications/:id" element={<ProtectedRoute><ApplicationDetail /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/applications" element={<ProtectedRoute adminOnly><AdminApplications /></ProtectedRoute>} />
+                  <Route path="/admin/gopinath-applications" element={<ProtectedRoute adminOnly><AdminGopinathApplications /></ProtectedRoute>} />
+                  <Route path="/admin/gopinath-applications/:id" element={<ProtectedRoute adminOnly><AdminGopinathApplicationReview /></ProtectedRoute>} />
                   <Route path="/admin/applications/:id" element={<ProtectedRoute adminOnly><AdminApplicationReview /></ProtectedRoute>} />
                   <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
+                  <Route path="/admin/gov-schemes" element={<ProtectedRoute adminOnly><AdminGovSchemes /></ProtectedRoute>} />
                   <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
                   <Route path="/admin/announcements" element={<ProtectedRoute adminOnly><AdminAnnouncements /></ProtectedRoute>} />
                   <Route path="/admin/payments" element={<ProtectedRoute adminOnly><AdminPayments /></ProtectedRoute>} />

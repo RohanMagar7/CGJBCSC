@@ -1,6 +1,6 @@
 import axiosInstance from './axios';
-import { API_ENDPOINTS } from '../../config/api';
-import { cacheManager, withCache } from '../../utils/cacheManager';
+import { API_ENDPOINTS } from '../config/api';
+import { cacheManager, withCache } from '../utils/cacheManager';
 
 // Cache configuration
 const CACHE_TTL = {
@@ -83,6 +83,13 @@ const apiService = {
     cacheManager.invalidate(/^applications/);
     cacheManager.invalidate(`application-${id}`);
     return axiosInstance.post(API_ENDPOINTS.APPLICATION_STATUS(id), { status, reject_reason: reason });
+  },
+  // Resubmit a previously rejected application (owner or admin)
+  resubmitApplication: (id, validateDocuments = true) => {
+    cacheManager.invalidate(/^applications/);
+    cacheManager.invalidate(`application-${id}`);
+    // DRF action URL: /api/applications/{id}/resubmit/
+    return axiosInstance.post(`${API_ENDPOINTS.APPLICATION_DETAIL(id)}resubmit/`, { validate_documents: validateDocuments });
   },
   
   // Documents - No cache (file uploads)
@@ -198,6 +205,44 @@ const apiService = {
     cacheManager.invalidate(/^payment-settings/);
     return axiosInstance.patch(API_ENDPOINTS.PAYMENT_SETTINGS_DETAIL(id), data);
   },
+
+  // Government Schemes - Medium cache (admin can update)
+  getGovSchemes: withCache(
+    () => axiosInstance.get(API_ENDPOINTS.GOV_SCHEMES),
+    'gov-schemes',
+    CACHE_TTL.MEDIUM
+  ),
+  createGovScheme: (data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.post(API_ENDPOINTS.GOV_SCHEMES, data);
+  },
+  updateGovScheme: (id, data) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.patch(API_ENDPOINTS.GOV_SCHEME_DETAIL(id), data);
+  },
+  deleteGovScheme: (id) => {
+    cacheManager.invalidate(/^gov-schemes/);
+    return axiosInstance.delete(API_ENDPOINTS.GOV_SCHEME_DETAIL(id));
+  },
+  
+  // Backups - Admin only, no caching needed
+  createBackup: () => axiosInstance.post(API_ENDPOINTS.BACKUP_CREATE),
+  listBackups: () => axiosInstance.get(API_ENDPOINTS.BACKUP_LIST),
+  cleanupBackups: (keepCount = 7) => axiosInstance.post(API_ENDPOINTS.BACKUP_CLEANUP, { keep_count: keepCount }),
+  
+  // Gopinath Scheme Applications
+  createGopinathApplication: (formData) => {
+    // formData should be FormData with files attached
+    return axiosInstance.post(API_ENDPOINTS.GOPINATH_APPLICATIONS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getGopinathApplications: () => axiosInstance.get(API_ENDPOINTS.GOPINATH_APPLICATIONS),
+  getGopinathApplication: (id) => axiosInstance.get(API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)),
+  updateGopinathApplicationStatus: (id, status, reason = '') => {
+    return axiosInstance.post(`${API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)}update_status/`, { status, reject_reason: reason });
+  },
+  deleteGopinathApplication: (id) => axiosInstance.delete(API_ENDPOINTS.GOPINATH_APPLICATION_DETAIL(id)),
   
   // Cache management utilities
   clearCache: () => cacheManager.clear(),
