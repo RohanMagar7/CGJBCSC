@@ -140,15 +140,37 @@ class PasswordResetRequestView(APIView):
         subject = 'Sewa Portal - Password reset request'
         message = f"Hello {user.full_name or user.username},\n\nWe received a request to reset your password.\n\nClick the link below to reset your password (valid for a limited time):\n\n{reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSewa Portal Team"
 
-        # Try sending email and return actual error if it fails
-        # This helps with debugging email configuration issues
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
-            logger.info('Password reset email sent successfully to %s', user.email)
+        # Send email with timeout to avoid blocking the request
+        # Use a background thread but wait briefly to catch immediate errors
+        from threading import Thread, Event
+        import time
+        
+        email_result = {'success': False, 'error': None}
+        email_done = Event()
+        
+        def _send_email_with_timeout():
+            try:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+                email_result['success'] = True
+                logger.info('Password reset email sent successfully to %s', user.email)
+            except Exception as e:
+                email_result['error'] = str(e)
+                logger.exception('Failed to send password reset email to %s: %s', user.email, e)
+            finally:
+                email_done.set()
+        
+        # Start email sending in background
+        email_thread = Thread(target=_send_email_with_timeout, daemon=True)
+        email_thread.start()
+        
+        # Wait up to 5 seconds for email to send
+        email_done.wait(timeout=5.0)
+        
+        # Check result
+        if email_result['success']:
             return Response({'detail': 'Password reset email has been sent successfully. Please check your inbox.'})
-        except Exception as e:
-            error_message = str(e)
-            logger.exception('Failed to send password reset email to %s: %s', user.email, error_message)
+        elif email_result['error']:
+            error_message = email_result['error']
             
             # Return helpful error message to frontend
             if 'Authentication' in error_message or 'Username and Password not accepted' in error_message:
@@ -156,7 +178,7 @@ class PasswordResetRequestView(APIView):
                     'detail': 'Email configuration error: Authentication failed. Please contact administrator.',
                     'error': 'SMTP authentication failed. Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.'
                 }, status=500)
-            elif 'Connection' in error_message or 'timed out' in error_message:
+            elif 'Connection' in error_message or 'timed out' in error_message or 'refused' in error_message:
                 return Response({
                     'detail': 'Email configuration error: Cannot connect to email server. Please contact administrator.',
                     'error': 'SMTP connection failed. Check EMAIL_HOST and EMAIL_PORT.'
@@ -166,6 +188,10 @@ class PasswordResetRequestView(APIView):
                     'detail': f'Failed to send password reset email. Error: {error_message}',
                     'error': error_message
                 }, status=500)
+        else:
+            # Email still sending after 5 seconds - return success but log it
+            logger.warning('Password reset email for %s is taking longer than expected, sending in background', user.email)
+            return Response({'detail': 'Password reset email is being sent. Please check your inbox in a moment.'})
 
 
 class PasswordResetConfirmView(APIView):
